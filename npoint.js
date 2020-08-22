@@ -1,4 +1,3 @@
-// does not require other Viewport components to function
 export class NPoint {
 	constructor(x = 0, y = 0) {
 		this.x = x;

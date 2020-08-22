@@ -1,4 +1,4 @@
-function floorMod(a, b) {
+export function floorMod(a, b) {
 	return ((a % b) + b) % b;
 }
 

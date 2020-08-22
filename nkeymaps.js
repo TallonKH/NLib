@@ -1,4 +1,5 @@
-isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
+import getOS from nmisc;
+const isMac = getOS() === "Mac";
 
 class KeybindHandler {
     constructor() {

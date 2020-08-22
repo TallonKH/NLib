@@ -82,28 +82,29 @@ export function downloadFile(filename, text) {
 	link.remove();
 }
 
-// by stackoverflow user 4815056 for this function
-function getOS() {
-	var userAgent = window.navigator.userAgent,
-		platform = window.navigator.platform,
-		macosPlatforms = ["Macintosh", "MacIntel", "MacPPC", "Mac68K"],
-		windowsPlatforms = ["Win32", "Win64", "Windows", "WinCE"],
-		iosPlatforms = ["iPhone", "iPad", "iPod"],
-		os = null;
+// by stackoverflow user 4815056
+export function getOS() {
+	const userAgent = window.navigator.userAgent;
+	const platform = window.navigator.platform;
+	const macosPlatforms = ["Macintosh", "MacIntel", "MacPPC", "Mac68K"];
+	const windowsPlatforms = ["Win32", "Win64", "Windows", "WinCE"];
+	const iosPlatforms = ["iPhone", "iPad", "iPod"];
 
 	if (macosPlatforms.indexOf(platform) !== -1) {
-		os = "Mac";
-	} else if (iosPlatforms.indexOf(platform) !== -1) {
-		os = "iOS";
-	} else if (windowsPlatforms.indexOf(platform) !== -1) {
-		os = "Windows";
-	} else if (/Android/.test(userAgent)) {
-		os = "Android";
-	} else if (!os && /Linux/.test(platform)) {
-		os = "Linux";
+		return "Mac";
 	}
-
-	return os;
+	if (iosPlatforms.indexOf(platform) !== -1) {
+		return "iOS";
+	}
+	if (windowsPlatforms.indexOf(platform) !== -1) {
+		return "Windows";
+	}
+	if (/Android/.test(userAgent)) {
+		return "Android";
+	}
+	if (!os && /Linux/.test(platform)) {
+		return "Linux";
+	}
 }
 
 function clearObj(obj) {
