@@ -6,7 +6,7 @@ export default class NPoint {
 	}
 
 	toString() {
-		return `(${this.x}, ${this.y})`;
+		return `(${this.x.toFixed(3)}, ${this.y.toFixed(3)})`;
 	}
 
 	operate(func){

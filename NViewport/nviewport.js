@@ -546,6 +546,7 @@ export default class NViewport {
 	}
 
 	_zoomUpdatePanCenter(prevZoomFactor, zoomCenter = null, quiet=false) {
+		console.log(this._zoomFactor.toFixed(3) + " : " + this._zoomCounter.toFixed(3))
 		if (zoomCenter === null) {
 			switch (this._zoomCenterMode) {
 				case "center":
@@ -572,7 +573,7 @@ export default class NViewport {
 	}
 
 	zoomCounterToFactor(counter) {
-		return Math.pow(this._zoomCounterBase, -counter);
+		return Math.pow(this._zoomCounterBase, counter);
 	}
 
 	setZoomFactor(newZoomFactor, zoomCenter = null, quiet = false) {
@@ -612,7 +613,7 @@ export default class NViewport {
 
 			if (e.ctrlKey) {
 				if (self._minZoomFactor < self._maxZoomFactor) {
-					self.setZoomCounter(self._zoomCounter + (e.deltaY * self.zoomSensitivity));
+					self.setZoomCounter(self._zoomCounter + (-e.deltaY * self.zoomSensitivity));
 					e.preventDefault();
 				}
 			} else {
