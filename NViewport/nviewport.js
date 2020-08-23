@@ -1,5 +1,8 @@
 import VPBackground from "./vp_background.js";
 import NPoint from "../npoint.js";
+import {
+	clamp
+} from "../nmath.js";
 
 export default class NViewport {
 	constructor({
@@ -18,14 +21,15 @@ export default class NViewport {
 
 		this.targetTickrate = 30;
 
-		this.zoomCenter = zoomCenter;
+		this.zoomCenterMode = zoomCenter;
 		this.minZoomFactor = minZoomFactor;
 		this.maxZoomFactor = maxZoomFactor;
-		this.minZoomCounter = Math.log(minZoomFactor) / Math.log(1.0075);
-		this.maxZoomCounter = Math.log(maxZoomFactor) / Math.log(1.0075);
 		this.zoomSensitivity = zoomSensitivity;
+		this.zoomCounterBase = 1.0075; // this.zoomFactor = Math.pow(this.zoomCounterBase, this.zoomCounter)
+		this.minZoomCounter = this.zoomFactorToCounter(this.minZoomFactor);
+		this.maxZoomCounter = this.zoomFactorToCounter(this.maxZoomFactor);
 		this.zoomFactor = 1;
-		this.zoomCounter = -1.0417;
+		this.zoomCounter = this.zoomFactorToCounter(this.zoomFactor);
 
 		this.pannable = pannable;
 		this.inversePanning = true;
@@ -99,8 +103,8 @@ export default class NViewport {
 		// }, 500);
 	}
 
-	setup(parentDiv){
-		if(!this.setupDone){
+	setup(parentDiv) {
+		if (!this.setupDone) {
 			this.makeElements();
 			parentDiv.appendChild(this.container);
 			this.setupScrollLogic();
@@ -380,7 +384,7 @@ export default class NViewport {
 	}
 
 	redraw() {
-		if(this.setupDone){
+		if (this.setupDone) {
 			this.redrawQueued = false;
 			const drawnObjIdsSorted = Array.from(this.drawnObjIds);
 			drawnObjIdsSorted.sort(this.getReversedDepthSorter());
@@ -491,7 +495,6 @@ export default class NViewport {
 			}
 		}
 
-		this.queueRedraw();
 		this.postOnMouseMove();
 	}
 
@@ -545,6 +548,47 @@ export default class NViewport {
 
 	}
 
+	zoomUpdatePanCenter(prevZoomFactor, zoomCenter = null) {
+		if (zoomCenter === null) {
+			switch (this.zoomCenterMode) {
+				case "center":
+					zoomCenter = this.vpCenter;
+					break;
+				case "mouse":
+					zoomCenter = this.mouseElemPos;
+					break;
+			}
+		}
+
+		this.panCenter = this.panCenter.subtractp(
+			zoomCenter.subtractp(this.panCenter.addp(this.vpCenter))
+			.divide1(prevZoomFactor).multiply1(this.zoomFactor - prevZoomFactor)
+		);
+		this.queueRedraw();
+	}
+
+	zoomFactorToCounter(factor) {
+		return Math.log(factor) / Math.log(this.zoomCounterBase);
+	}
+
+	zoomCounterToFactor(counter) {
+		return Math.pow(this.zoomCounterBase, -counter);
+	}
+
+	setZoomFactor(newZoomFactor, zoomCenter = null) {
+		const prevZoomFactor = this.zoomFactor;
+		this.zoomFactor = clamp(newZoomFactor, this.minZoomFactor, this.maxZoomFactor);
+		this.zoomCounter = this.zoomFactorToCounter(this.zoomFactor);
+		this.zoomUpdatePanCenter(prevZoomFactor, zoomCenter);
+	}
+
+	setZoomCounter(newZoomCounter, zoomCenter = null) {
+		const prevZoomFactor = this.zoomFactor;
+		this.zoomCounter = clamp(newZoomCounter, this.minZoomCounter, this.maxZoomCounter);
+		this.zoomFactor = this.zoomCounterToFactor(this.zoomCounter);
+		this.zoomUpdatePanCenter(prevZoomFactor, zoomCenter);
+	}
+
 	setupMouseListeners() {
 		const self = this;
 		this.container.addEventListener("pointerenter", function (e) {
@@ -560,20 +604,7 @@ export default class NViewport {
 
 			if (e.ctrlKey) {
 				if (self.minZoomFactor < self.maxZoomFactor) {
-					const prevZoom = self.zoomFactor;
-					self.zoomCounter += e.deltaY;
-					self.zoomCounter = Math.min(self.maxZoomCounter, Math.max(self.minZoomCounter, self.zoomCounter));
-					self.zoomFactor = Math.pow(1.0075, -self.zoomCounter);
-					const zoomDelta = self.zoomFactor - prevZoom;
-					switch (self.zoomCenter) {
-						case "center":
-							self.panCenter = new NPoint(0, 0); //self.panCenter.subtractp(self.vpCenter.subtractp(self.panCenter).divide1(prevZoom).multiply1(self.zoomFactor - prevZoom));
-							break;
-						case "mouse":
-							self.panCenter = self.panCenter.subtractp(self.mouseElemPos.subtractp(self.panCenter.addp(self.vpCenter)).divide1(prevZoom).multiply1(self.zoomFactor - prevZoom));
-							break;
-					}
-					self.queueRedraw();
+					self.setZoomCounter(self.zoomCounter + (e.deltaY * self.zoomSensitivity));
 					e.preventDefault();
 				}
 			} else {
