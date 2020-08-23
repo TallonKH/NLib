@@ -1,4 +1,7 @@
-export class Viewport {
+import VPBackground from "./vp_background.js";
+import NPoint from "../npoint.js";
+
+export default class NViewport {
 	constructor({
 		minZoomFactor = 0.25,
 		maxZoomFactor = 2,
@@ -413,13 +416,14 @@ export class Viewport {
 
 	setupScrollLogic() {
 		const self = this;
-		new ResizeSensor(this.container, function (e) {
+		self.resizeObserver = new ResizeObserver(function (e) {
 			self.canvas.width = e.width;
 			self.canvas.height = e.height;
 			self.canvasDims = new NPoint(self.canvas.width, self.canvas.height);
 			self.vpCenter = self.canvasDims.divide1(2);
 			self.queueRedraw();
 		});
+		self.resizeObserver.observe(this.container);
 	}
 
 	mousePosUpdated() {
@@ -552,7 +556,7 @@ export class Viewport {
 					const zoomDelta = self.zoomFactor - prevZoom;
 					switch (self.zoomCenter) {
 						case "center":
-							self.panCenter = new NPoint(0,0);//self.panCenter.subtractp(self.vpCenter.subtractp(self.panCenter).divide1(prevZoom).multiply1(self.zoomFactor - prevZoom));
+							self.panCenter = new NPoint(0, 0); //self.panCenter.subtractp(self.vpCenter.subtractp(self.panCenter).divide1(prevZoom).multiply1(self.zoomFactor - prevZoom));
 							break;
 						case "mouse":
 							self.panCenter = self.panCenter.subtractp(self.mouseElemPos.subtractp(self.panCenter.addp(self.vpCenter)).divide1(prevZoom).multiply1(self.zoomFactor - prevZoom));
@@ -564,9 +568,9 @@ export class Viewport {
 			} else {
 				if (self.pannable) {
 					let centerDelta = new NPoint(e.deltaX, e.deltaY).multiply1(self.panSensitivity);
-					if(self.inversePanning){
+					if (self.inversePanning) {
 						self.panCenter = self.panCenter.subtractp(centerDelta);
-					}else{
+					} else {
 						self.panCenter = self.panCenter.addp(centerDelta);
 					}
 					self.mousePosUpdated();

@@ -1,7 +1,7 @@
 import getOS from nmisc;
 const isMac = getOS() === "Mac";
 
-class KeybindHandler {
+export class KeybindHandler {
     constructor() {
         this.macAdjust = true;
 
@@ -140,7 +140,7 @@ class KeybindHandler {
 }
 
 /** Immutable */
-class ContextMatcher {
+export class ContextMatcher {
     static contextModes = Object.freeze({
         "equals": {
             name: "equals",
@@ -252,7 +252,7 @@ class ContextMatcher {
     }
 }
 
-class ContextGroup {
+export class ContextGroup {
     constructor(contextMatcher) {
         this.contextMatcher = contextMatcher;
         // Object.freeze(this.contextMatcher);
@@ -306,7 +306,7 @@ class ContextGroup {
 }
 
 /** (Immutable) */
-class KeyCombo {
+export class KeyCombo {
     // direction: true=press, false=release
     constructor(keyCode, direction, {
         shift = false,
@@ -378,7 +378,7 @@ class KeyCombo {
 }
 
 /** (Immutable) */
-class Keybind {
+export class Keybind {
     constructor(keyCombo, action) {
         this.keyCombo = keyCombo;
         this.action = action;
@@ -387,7 +387,7 @@ class Keybind {
 }
 
 /** (Immutable) */
-class KeyAction {
+export class KeyAction {
     constructor(name, func) {
         this.name = name;
         this.perform = func;
@@ -457,5 +457,3 @@ function example2() {
 
     console.log(handler.activeContextGroups);
 }
-
-example2();

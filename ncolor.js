@@ -1,33 +1,17 @@
-import * as nmath from nmath;
-import * as rgblab from rgb2lab
-import {compose, identity} from nmisc
+import * as nmath from "./nmath.js";
+import {
+    compose,
+    identity
+} from "./nmisc.js"
+import * as rgblab from "./ExternalLibraries/rgb-lab/rgblab.js"
 
 function unimplemented(a) {
     console.error("Conversion not implemented yet!");
     return null;
 }
 
-const conversionMatrix = {
-    "RGB": {
-        "RGB": identity,
-        "HSL": NColor.rgb_hsl,
-        "Lab": NColor.rgb_lab,
-    },
-    "HSL": {
-        "RGB": NColor.hsl_rgb,
-        "HSL": identity,
-        "Lab": compose(NColor.hsl_rgb, NColor.rgb_lab),
-    },
-    "Lab": {
-        "RGB": NColor.lab_rgb,
-        "HSL": compose(NColor.lab_rgb, NColor.rgb_hsl),
-        "Lab": identity,
-    }
-
-}
-
 /** Immutable */
-export class NColor {
+export default class NColor {
     constructor(model, v1, v2, v3, alpha = 1.0) {
         this.model = model;
         this.v1 = v1;
@@ -37,8 +21,34 @@ export class NColor {
         Object.freeze(this);
     }
 
+    static conversionMatrix = {
+        "RGB": {
+            "RGB": identity,
+            "HSL": NColor.rgb_hsl,
+            "Lab": NColor.rgb_lab,
+        },
+        "HSL": {
+            "RGB": NColor.hsl_rgb,
+            "HSL": identity,
+            "Lab": compose(NColor.hsl_rgb, NColor.rgb_lab),
+        },
+        "Lab": {
+            "RGB": NColor.lab_rgb,
+            "HSL": compose(NColor.lab_rgb, NColor.rgb_hsl),
+            "Lab": identity,
+        }
+    }
+
+    log() {
+        console.log(`%c   %c${this.toString()}`, `background-color: ${this.toHex()}`, "background-color: none")
+    }
+
     toString() {
-        return `(${model}: ${r}, ${g}, ${b}, ${b})`;
+        return `(${this.model}: ` +
+            `${this.v1.toFixed(3)}, ` +
+            `${this.v2.toFixed(3)}, ` +
+            `${this.v3.toFixed(3)}, ` +
+            `${this.alpha.toFixed(3)})`;
     }
 
     setV1(v1) {
@@ -114,7 +124,7 @@ export class NColor {
     }
 
     convertTo(model) {
-        return conversionMatrix[this.model][model](this);
+        return NColor.conversionMatrix[this.model][model](this);
     }
 
     toHex() {
@@ -127,7 +137,7 @@ export class NColor {
     }
 
     static componentFromHex(hex) {
-        return parseInt(hex, 16)/255;
+        return parseInt(hex, 16) / 255;
     }
 
     /** Creates an NColor from a CSS-style hex code */
@@ -179,8 +189,8 @@ export class NColor {
 
     static rgb_hsl(rgb) {
         const r = rgb.v1;
-        const g = rgb.v1;
-        const b = rgb.v1;
+        const g = rgb.v2;
+        const b = rgb.v3;
         const max = Math.max(r, g, b);
         const min = Math.min(r, g, b);
         let h;
@@ -230,12 +240,12 @@ export class NColor {
         );
     }
 
-    static rgb_lab(rgb){
+    static rgb_lab(rgb) {
         const lab = rgblab.rgb2lab([rgb.v1, rgb.v2, rgb.v3]);
         return new NColor("Lab", ...lab, rgb.alpha);
     }
 
-    static lab_rgb(lab){
+    static lab_rgb(lab) {
         const rgb = rgblab.lab2rgb([lab.v1, lab.v2, lab.v3]);
         return new NColor("RGB", ...rgb, lab.alpha);
     }
@@ -270,7 +280,7 @@ export class NColor {
 
     /** Combine 2 NColors by running a binary operator on their RGB components. Yes, the name of this function is a pun. */
     static cooperate(colorA, colorB, func, operateAlpha = false) {
-        if(colorA.model !== colorB.model){
+        if (colorA.model !== colorB.model) {
             throw `Cannot combine colors with different models! [${colorA.model}] and [${colorB.model}].`
         }
 
@@ -281,20 +291,20 @@ export class NColor {
 
         return new NColor(
             colorA.model,
-            func(colorA.r, colorB.r, colorA, colorB),
-            func(colorA.g, colorB.g, colorA, colorB),
-            func(colorA.b, colorB.b, colorA, colorB),
+            func(colorA.v1, colorB.v1, colorA, colorB),
+            func(colorA.v2, colorB.v2, colorA, colorB),
+            func(colorA.v3, colorB.v3, colorA, colorB),
             alpha
         );
     }
 
     /** Combine n colors by running an array-taking operator on their RGB components. */
     static noperate(colors, func, operateAlpha = false) {
-        if(colors.length == 0){
+        if (colors.length == 0) {
             throw "Cannot combine 0 colors!"
         }
 
-        if(!allEqual(...colors.map(c => c.model))){
+        if (!allEqual(...colors.map(c => c.model))) {
             throw "Cannot combine colors unless all have the same model!"
         }
 
@@ -305,9 +315,9 @@ export class NColor {
 
         return new NColor(
             colors[0].model,
-            func(colors.map(c => c.r)),
-            func(colors.map(c => c.g)),
-            func(colors.map(c => c.b)),
+            func(colors.map(c => c.v1)),
+            func(colors.map(c => c.v2)),
+            func(colors.map(c => c.v3)),
             alpha
         );
     }
@@ -326,7 +336,7 @@ export class NColor {
         return NColor.cooperate(
             colorA,
             colorB,
-            ac, bc => nmath.lerp(ac, bc, mix),
+            (ac, bc) => nmath.lerp(ac, bc, mix),
             operateAlpha
         );
     }

@@ -13,7 +13,7 @@ export function absMin(a, b) {
 
 /** linear interpolate from min to max */
 export function lerp(min, max, alpha) {
-	return min * alpha + max * (1 - alpha);
+	return max * alpha + min * (1 - alpha);
 }
 
 export function average(values) {

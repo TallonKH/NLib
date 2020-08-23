@@ -1,4 +1,6 @@
-class VPBackground extends VPObject {
+import VPObject from "./vp_object.js";
+
+export default class VPBackground extends VPObject {
     constructor(viewport, {} = {}) {
         super(viewport, {
             "mouseListening": true,

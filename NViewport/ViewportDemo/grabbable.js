@@ -1,15 +1,24 @@
-class GrabObj extends VPObject {
+import VPObject from "../vp_object.js";
+import NColor from "../../ncolor.js";
+
+export default class GrabObj extends VPObject {
     constructor(viewport, position, {} = {}) {
         super(viewport, {
             "mouseListening": true,
             "position": position
         })
         this.size = 25;
-        this.color = "#aaa";
+        this.colorHex = "#aaa"
+        this.color = NColor.fromHex(this.colorHex);
+    }
+
+    setColor(color){
+        this.color = color;
+        this.colorHex = color.toHex();
     }
 
     draw(ctx) {
-        ctx.fillStyle = this.color;
+        ctx.fillStyle = this.color.toHex();
         if (this.held || (this.mouseOverlapping && !this.vp.mouseDown)) {
             ctx.lineWidth = 6;
             ctx.strokeStyle = "#ec5";

@@ -1,5 +1,8 @@
+import NPoint from "../npoint.js";
+
 var idCounter = 0;
-class VPObject {
+
+export default class VPObject {
     constructor(vp, {
         position = new NPoint(),
         drawable = true,

@@ -3,7 +3,7 @@ export function identity(a) {
 }
 
 export function compose(...funcs){
-    const existing = funcs[0]
+    let existing = funcs[0]
     for(let i=1, l=funcs.length; i<l; i++){
         const current = funcs[i];
         existing = val => current(existing(val));

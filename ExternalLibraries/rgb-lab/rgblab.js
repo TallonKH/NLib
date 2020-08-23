@@ -1,4 +1,6 @@
-import clamp from nmath;
+function clamp(val, min=0, max=1){
+  return Math.max(min, Math.min(val, max));
+}
 
 export function lab2rgb(lab) {
   let y = (lab[0] + 16) / 116;
@@ -26,9 +28,9 @@ export function lab2rgb(lab) {
 
 
 export function rgb2lab(rgb) {
-  let r = rgb.v1;
-  let g = rgb.v2;
-  let b = rgb.v3;
+  let r = rgb[0];
+  let g = rgb[1];
+  let b = rgb[2];
 
   r = (r > 0.04045) ? Math.pow((r + 0.055) / 1.055, 2.4) : r / 12.92;
   g = (g > 0.04045) ? Math.pow((g + 0.055) / 1.055, 2.4) : g / 12.92;
