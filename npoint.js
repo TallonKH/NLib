@@ -2,62 +2,105 @@ export default class NPoint {
 	constructor(x = 0, y = 0) {
 		this.x = x;
 		this.y = y;
+		Object.freeze(this);
 	}
 
 	toString() {
 		return `(${this.x}, ${this.y})`;
 	}
 
-	addp(other) {
-		return new NPoint(this.x + other.x, this.y + other.y);
+	operate(func){
+		return new NPoint(
+			func(this.x, this),
+			func(this.y, this)
+		)
 	}
 
-	subtractp(other) {
-		return new NPoint(this.x - other.x, this.y - other.y);
+	static cooperate(func, a, b){
+		return new NPoint(
+			func(a.x, b.x, a, b),
+			func(a.y, b,y, a, b)
+		)
 	}
 
-	multiplyp(other) {
-		return new NPoint(this.x * other.x, this.y * other.y);
-	}
+	static noperate(func, points) {
+        if (points.length == 0) {
+            return new NPoint(0, 0);
+        }
 
-	dividep(other) {
-		return new NPoint(this.x / other.x, this.y / other.y);
-	}
+        return new NPoint(
+            func(points.map(p => p.x)),
+            func(points.map(p => p.y))
+        );
+    }
 
 	add1(other) {
 		return new NPoint(this.x + other, this.y + other);
-	}
-
-	subtract1(other) {
-		return new NPoint(this.x - other, this.y - other);
-	}
-
-	multiply1(other) {
-		return new NPoint(this.x * other, this.y * other);
-	}
-
-	divide1(other) {
-		return new NPoint(this.x / other, this.y / other);
 	}
 
 	add2(x, y) {
 		return new NPoint(this.x + x, this.y + y);
 	}
 
+	addp(other) {
+		return new NPoint(this.x + other.x, this.y + other.y);
+	}
+
+	subtract1(other) {
+		return new NPoint(this.x - other, this.y - other);
+	}
+
 	subtract2(x, y) {
 		return new NPoint(this.x - x, this.y - y);
+	}
+
+	subtractp(other) {
+		return new NPoint(this.x - other.x, this.y - other.y);
+	}
+
+	multiply1(other) {
+		return new NPoint(this.x * other, this.y * other);
 	}
 
 	multiply2(x, y) {
 		return new NPoint(this.x * x, this.y * y);
 	}
 
+	multiplyp(other) {
+		return new NPoint(this.x * other.x, this.y * other.y);
+	}
+
+	divide1(other) {
+		return new NPoint(this.x / other, this.y / other);
+	}
+
 	divide2(x, y) {
 		return new NPoint(this.x / x, this.y / y);
 	}
 
+	dividep(other) {
+		return new NPoint(this.x / other.x, this.y / other.y);
+	}
+
+	negate(){
+		return new NPoint(-this.x, -this.y);
+	}
+
+	round(n = 0) {
+		if (n !== 0) {
+			const factor = Math.pow(10, n);
+			return new NPoint(Math.round(this.x * factor) / factor, Math.round(this.y * factor) / factor);
+		} else {
+			return new NPoint(Math.round(this.x), Math.round(this.y));
+		}
+	}
+
 	floor() {
 		return new NPoint(Math.floor(this.x), Math.floor(this.y));
+	}
+
+	ceil() {
+		return new NPoint(Math.ceil(this.x), Math.ceil(this.y));
 	}
 
 	addComponents() {
@@ -72,7 +115,7 @@ export default class NPoint {
 		return Math.sqrt(this.lengthSquared());
 	}
 
-	normalized(){
+	normalized() {
 		return this.divide1(this.length());
 	}
 
@@ -82,15 +125,6 @@ export default class NPoint {
 
 	max() {
 		return Math.max(this.x, this.y);
-	}
-
-	round(n = 0) {
-		if (n) {
-			const factor = Math.pow(10, n);
-			return new NPoint(Math.round(this.x * factor) / factor, Math.round(this.y * factor) / factor);
-		} else {
-			return new NPoint(Math.round(this.x), Math.round(this.y));
-		}
 	}
 
 	copy() {
@@ -210,12 +244,12 @@ export default class NPoint {
 		const omt = 1 - t;
 		const omt2 = omt * omt;
 		const t2 = t * t;
-	
+
 		const coeff1 = omt2 * omt;
 		const coeff2 = 3 * t * omt2;
 		const coeff3 = 3 * t2 * omt;
 		const coeff4 = t2 * t;
-	
+
 		const curveX = p1.x * coeff1 + p2.x * coeff2 + p3.x * coeff3 + p4.x * coeff4;
 		const curveY = p1.y * coeff1 + p2.y * coeff2 + p3.y * coeff3 + p4.y * coeff4;
 		return new NPoint(curveX, curveY);

@@ -39,7 +39,7 @@ export default class VPBackground extends VPObject {
     onDragged() {
         super.onDragged();
         if (this.vp.pannable) {
-            this.vp.panCenter = this.vp.panCenter.addp(this.vp.mouseElemDelta);
+            this.vp.setPanCenter(this.vp.panCenter.addp(this.vp.mouseElemDelta));
         }
     }
 

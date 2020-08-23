@@ -279,7 +279,7 @@ export default class NColor {
     }
 
     /** Combine 2 NColors by running a binary operator on their RGB components. Yes, the name of this function is a pun. */
-    static cooperate(colorA, colorB, func, operateAlpha = false) {
+    static cooperate(func, colorA, colorB, operateAlpha = false) {
         if (colorA.model !== colorB.model) {
             throw `Cannot combine colors with different models! [${colorA.model}] and [${colorB.model}].`
         }
@@ -299,7 +299,7 @@ export default class NColor {
     }
 
     /** Combine n colors by running an array-taking operator on their RGB components. */
-    static noperate(colors, func, operateAlpha = false) {
+    static noperate(func, colors, operateAlpha = false) {
         if (colors.length == 0) {
             throw "Cannot combine 0 colors!"
         }
@@ -325,8 +325,8 @@ export default class NColor {
     /** Average the components of an array of colors. */
     static average(colors, operateAlpha = false) {
         return NColor.noperate(
-            colors,
             nmath.average,
+            colors,
             operateAlpha
         );
     }
@@ -334,9 +334,9 @@ export default class NColor {
     /** linearly interpolate two colors in their current space */
     static lerp(colorA, colorB, mix, operateAlpha) {
         return NColor.cooperate(
+            (ac, bc) => nmath.lerp(ac, bc, mix),
             colorA,
             colorB,
-            (ac, bc) => nmath.lerp(ac, bc, mix),
             operateAlpha
         );
     }

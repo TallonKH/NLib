@@ -564,6 +564,7 @@ export default class NViewport {
 			zoomCenter.subtractp(this.panCenter.addp(this.vpCenter))
 			.divide1(prevZoomFactor).multiply1(this.zoomFactor - prevZoomFactor)
 		);
+		this.mousePosUpdated();
 		this.queueRedraw();
 	}
 
@@ -589,6 +590,12 @@ export default class NViewport {
 		this.zoomUpdatePanCenter(prevZoomFactor, zoomCenter);
 	}
 
+	setPanCenter(newCenter) {
+		this.panCenter = newCenter;
+		this.mousePosUpdated();
+		this.queueRedraw();
+	}
+
 	setupMouseListeners() {
 		const self = this;
 		this.container.addEventListener("pointerenter", function (e) {
@@ -611,12 +618,9 @@ export default class NViewport {
 				if (self.pannable) {
 					let centerDelta = new NPoint(e.deltaX, e.deltaY).multiply1(self.panSensitivity);
 					if (self.inversePanning) {
-						self.panCenter = self.panCenter.subtractp(centerDelta);
-					} else {
-						self.panCenter = self.panCenter.addp(centerDelta);
+						centerDelta = centerDelta.negate();
 					}
-					self.mousePosUpdated();
-					self.queueRedraw();
+					self.setPanCenter(self.panCenter.addp(centerDelta));
 					e.preventDefault();
 				}
 			}
