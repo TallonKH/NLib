@@ -11,7 +11,9 @@ export default class NViewport {
 		zoomCenter = "mouse", //center, mouse, panCenter
 		backgroundClass = VPBackground
 	} = {}) {
-		this.redrawQueued
+		this.setupDone = false;
+		this.redrawQueued = false;
+
 		this.background = new backgroundClass(this);
 
 		this.targetTickrate = 30;
@@ -91,19 +93,25 @@ export default class NViewport {
 		this.shiftDown = false;
 		this.altDown = false;
 		this.downKeys = new Set();
-		this.makeElements();
-		this.setupScrollLogic();
-		this.setupMouseListeners();
-		this.setupKeyListeners();
-		this.registerObj(this.background);
 		const self = this;
 		// setTimeout(function () {
 		// 	self.recenter();
 		// }, 500);
 	}
 
+	setup(parentDiv){
+		if(!this.setupDone){
+			this.makeElements();
+			parentDiv.appendChild(this.container);
+			this.setupScrollLogic();
+			this.setupMouseListeners();
+			this.setupKeyListeners();
+			this.registerObj(this.background);
+			this.setupDone = true;
+		}
+	}
+
 	recenter() {
-		console.log("Asdf");
 		this.panCenter = new NPoint(this.canvas.width / 2, this.canvas.height / 2);
 		this.queueRedraw();
 	}
@@ -372,15 +380,17 @@ export default class NViewport {
 	}
 
 	redraw() {
-		this.redrawQueued = false;
-		const drawnObjIdsSorted = Array.from(this.drawnObjIds);
-		drawnObjIdsSorted.sort(this.getReversedDepthSorter());
-		this.ctx.setTransform(this.zoomFactor, 0, 0, this.zoomFactor, this.panCenter.x + this.vpCenter.x, this.panCenter.y + this.vpCenter.y);
-		for (const uuid of drawnObjIdsSorted) {
-			const obj = this.allObjs[uuid];
-			obj.draw(this.ctx);
+		if(this.setupDone){
+			this.redrawQueued = false;
+			const drawnObjIdsSorted = Array.from(this.drawnObjIds);
+			drawnObjIdsSorted.sort(this.getReversedDepthSorter());
+			this.ctx.setTransform(this.zoomFactor, 0, 0, this.zoomFactor, this.panCenter.x + this.vpCenter.x, this.panCenter.y + this.vpCenter.y);
+			for (const uuid of drawnObjIdsSorted) {
+				const obj = this.allObjs[uuid];
+				obj.draw(this.ctx);
+			}
+			this.onRedraw();
 		}
-		this.onRedraw();
 	}
 
 	onRedraw() {}
@@ -417,8 +427,9 @@ export default class NViewport {
 	setupScrollLogic() {
 		const self = this;
 		self.resizeObserver = new ResizeObserver(function (e) {
-			self.canvas.width = e.width;
-			self.canvas.height = e.height;
+			const resizeRect = e[0].contentRect;
+			self.canvas.width = resizeRect.width;
+			self.canvas.height = resizeRect.height;
 			self.canvasDims = new NPoint(self.canvas.width, self.canvas.height);
 			self.vpCenter = self.canvasDims.divide1(2);
 			self.queueRedraw();

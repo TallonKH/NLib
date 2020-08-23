@@ -3,7 +3,6 @@ import NColor from "../../ncolor.js"
 import GrabObj from "./grabbable.js";
 import NViewport from "../nviewport.js";
 
-var rootDiv;
 var viewport;
 
 window.onload = function () {
@@ -12,7 +11,6 @@ window.onload = function () {
 };
 
 function setupElements() {
-    rootDiv = document.getElementById("rootDiv");
     viewport = new NViewport({
         "minZoomFactor": 0.25,
         "maxZoomFactor": 4,
@@ -22,7 +20,7 @@ function setupElements() {
         "zoomCenter": "mouse"
     });
     viewport.background.color = "#1a1a1a"
-    rootDiv.appendChild(viewport.container);
+    viewport.setup(document.getElementById("rootDiv"));
 }
 
 function main() {
