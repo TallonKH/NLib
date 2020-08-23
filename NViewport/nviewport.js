@@ -11,92 +11,92 @@ export default class NViewport {
 		pannable = true,
 		zoomSensitivity = 1,
 		panSensitivity = 0.5,
-		zoomCenter = "mouse", //center, mouse, panCenter
+		zoomCenterMode = "mouse", //center, mouse, panCenter
 		backgroundClass = VPBackground
 	} = {}) {
-		this.setupDone = false;
-		this.redrawQueued = false;
+		this._setupDone = false;
+		this._redrawQueued = false;
 
-		this.background = new backgroundClass(this);
+		this._background = new backgroundClass(this);
 
 		this.targetTickrate = 30;
 
-		this.zoomCenterMode = zoomCenter;
-		this.minZoomFactor = minZoomFactor;
-		this.maxZoomFactor = maxZoomFactor;
+		this._zoomCenterMode = zoomCenterMode;
+		this._minZoomFactor = minZoomFactor;
+		this._maxZoomFactor = maxZoomFactor;
 		this.zoomSensitivity = zoomSensitivity;
-		this.zoomCounterBase = 1.0075; // this.zoomFactor = Math.pow(this.zoomCounterBase, this.zoomCounter)
-		this.minZoomCounter = this.zoomFactorToCounter(this.minZoomFactor);
-		this.maxZoomCounter = this.zoomFactorToCounter(this.maxZoomFactor);
-		this.zoomFactor = 1;
-		this.zoomCounter = this.zoomFactorToCounter(this.zoomFactor);
+		this._zoomCounterBase = 1.0075; // this.zoomFactor = Math.pow(this.zoomCounterBase, this.zoomCounter)
+		this._minZoomCounter = this.zoomFactorToCounter(this._minZoomFactor);
+		this._maxZoomCounter = this.zoomFactorToCounter(this._maxZoomFactor);
+		this._zoomFactor = 1;
+		this._zoomCounter = this.zoomFactorToCounter(this._zoomFactor);
 
 		this.pannable = pannable;
 		this.inversePanning = true;
-		this.panCenter = new NPoint();
-		this.vpCenter = new NPoint();
+		this._panCenter = new NPoint();
+		this._vpCenter = new NPoint();
 		this.panSensitivity = panSensitivity;
 
-		this.mouseDown = false;
+		this._mouseDown = false;
 
 		/** raw mouse position (relative to viewport element) */
-		this.mouseElemPos = new NPoint();
-		this.mouseElemDownPos = new NPoint();
-		this.mouseElemDelta = new NPoint();
+		this._mouseElemPos = new NPoint();
+		this._mouseElemDownPos = new NPoint();
+		this._mouseElemDelta = new NPoint();
 
 		/** relative to viewport objects */
-		this.mousePos = new NPoint();
+		this._mousePos = new NPoint();
 		/** position where mouse was last pressed down */
-		this.mouseDownPos = new NPoint();
+		this._mouseDownPos = new NPoint();
 		/** movement of mouse between ticks */
-		this.mouseDelta = new NPoint();
+		this._mouseDelta = new NPoint();
 		/** cumulative distance that mouse has been dragged in the current press */
-		this.mouseDragDistance = 0;
+		this._mouseDragDistance = 0;
 		/** farthest distance that mouse has been from its press position */
-		this.mouseDragMaxDelta = 0;
+		this._mouseDragMaxDelta = 0;
 
-		this.cursorSuggests = {
+		this._cursorSuggests = {
 			"default": 1
 		};
-		this.cursorPriorities = ["none", "not-allowed", "help", "grabbing", "grab", "move", "pointer", "crosshair", "default"];
+		this._cursorPriorities = ["none", "not-allowed", "help", "grabbing", "grab", "move", "pointer", "crosshair", "default"];
 
-		this.canvasDims = new NPoint();
+		this._canvasDims = new NPoint();
 		this.nonDragThreshold = 8;
 
-		this.allObjs = {};
+		this._allObjs = {};
 
-		this.drawRegisterCounter = 0
-		this.drawnObjIds = new Set();
-		this.mouseListeningObjIds = new Set();
-		this.mouseOverObjIds = new Set();
+		this._drawRegisterCounter = 0
+		this._drawnObjIds = new Set();
+		this._mouseListeningObjIds = new Set();
+		this._mouseOverObjIds = new Set();
 		/** objects that the mouse is pressed down on */
-		this.heldObjIds = new Set();
+		this._heldObjIds = new Set();
 		/** objects that the mouse is pressed down on and moved sufficiently */
-		this.draggedObjIds = new Set();
+		this._draggedObjIds = new Set();
 
 		// this.drawnObjIdsSorted = []
-		this.mouseListeningObjIdsSorted = []
-		this.mouseOverObjIdsSorted = []
-		this.heldObjIdsSorted = []
-		this.draggedObjIdsSorted = []
+		this._mouseListeningObjIdsSorted = []
+		this._mouseOverObjIdsSorted = []
+		this._heldObjIdsSorted = []
+		this._draggedObjIdsSorted = []
 
-		this.preMouseDownListeners = {}
-		this.preMouseUpListeners = {}
-		this.preMouseClickListeners = {}
-		this.preMouseMoveListeners = {}
-		this.preMouseWheelListeners = {}
-		this.postMouseDownListeners = {}
-		this.postMouseUpListeners = {}
-		this.postMouseClickListeners = {}
-		this.postMouseMoveListeners = {}
-		this.postMouseWheelListeners = {}
+		this._preMouseDownListeners = {}
+		this._preMouseUpListeners = {}
+		this._preMouseClickListeners = {}
+		this._preMouseMoveListeners = {}
+		this._preMouseWheelListeners = {}
+		this._postMouseDownListeners = {}
+		this._postMouseUpListeners = {}
+		this._postMouseClickListeners = {}
+		this._postMouseMoveListeners = {}
+		this._postMouseWheelListeners = {}
 
 		// is the mouse over the viewport?
-		this.mouseWithin = false;
-		this.ctrlDown = false;
-		this.shiftDown = false;
-		this.altDown = false;
-		this.downKeys = new Set();
+		this._mouseWithin = false;
+		this._ctrlDown = false;
+		this._shiftDown = false;
+		this._altDown = false;
+		this._downKeys = new Set();
 		const self = this;
 		// setTimeout(function () {
 		// 	self.recenter();
@@ -104,84 +104,84 @@ export default class NViewport {
 	}
 
 	setup(parentDiv) {
-		if (!this.setupDone) {
-			this.makeElements();
+		if (!this._setupDone) {
+			this._makeElements();
 			parentDiv.appendChild(this.container);
-			this.setupScrollLogic();
-			this.setupMouseListeners();
-			this.setupKeyListeners();
-			this.registerObj(this.background);
-			this.setupDone = true;
+			this._setupScrollLogic();
+			this._setupMouseListeners();
+			this._setupKeyListeners();
+			this.registerObj(this._background);
+			this._setupDone = true;
 		}
 	}
 
 	recenter() {
-		this.panCenter = new NPoint(this.canvas.width / 2, this.canvas.height / 2);
+		this._panCenter = new NPoint(this.canvas.width / 2, this.canvas.height / 2);
 		this.queueRedraw();
 	}
 
-	preOnMouseDown() {
-		if (this.preMouseDownListeners) {
-			Object.values(this.preMouseDownListeners).forEach(f => f(this));
+	_preOnMouseDown() {
+		if (this._preMouseDownListeners) {
+			Object.values(this._preMouseDownListeners).forEach(f => f(this));
 		}
 	}
 
-	preOnMouseUp() {
-		if (this.preMouseUpListeners) {
-			Object.values(this.preMouseUpListeners).forEach(f => f(this));
+	_preOnMouseUp() {
+		if (this._preMouseUpListeners) {
+			Object.values(this._preMouseUpListeners).forEach(f => f(this));
 		}
 	}
 
-	preOnMouseClick() {
-		if (this.preMouseClickListeners) {
-			Object.values(this.preMouseClickListeners).forEach(f => f(this));
+	_preOnMouseClick() {
+		if (this._preMouseClickListeners) {
+			Object.values(this._preMouseClickListeners).forEach(f => f(this));
 		}
 	}
 
-	preOnMouseMove() {
-		if (this.preMouseMoveListeners) {
-			Object.values(this.preMouseMoveListeners).forEach(f => f(this));
+	_preOnMouseMove() {
+		if (this._preMouseMoveListeners) {
+			Object.values(this._preMouseMoveListeners).forEach(f => f(this));
 		}
 	}
 
-	preOnMouseWheel(e) {
-		if (this.preMouseWheelListeners) {
-			Object.values(this.preMouseWheelListeners).forEach(f => f(this, e));
+	_preOnMouseWheel(e) {
+		if (this._preMouseWheelListeners) {
+			Object.values(this._preMouseWheelListeners).forEach(f => f(this, e));
 		}
 	}
 
-	postOnMouseDown() {
-		if (this.postMouseDownListeners) {
-			Object.values(this.postMouseDownListeners).forEach(f => f(this));
+	_postOnMouseDown() {
+		if (this._postMouseDownListeners) {
+			Object.values(this._postMouseDownListeners).forEach(f => f(this));
 		}
 	}
 
-	postOnMouseUp() {
-		if (this.postMouseUpListeners) {
-			Object.values(this.postMouseUpListeners).forEach(f => f(this));
+	_postOnMouseUp() {
+		if (this._postMouseUpListeners) {
+			Object.values(this._postMouseUpListeners).forEach(f => f(this));
 		}
 	}
 
-	postOnMouseClick() {
-		if (this.postMouseClickListeners) {
-			Object.values(this.postMouseClickListeners).forEach(f => f(this));
+	_postOnMouseClick() {
+		if (this._postMouseClickListeners) {
+			Object.values(this._postMouseClickListeners).forEach(f => f(this));
 		}
 	}
 
-	postOnMouseMove() {
-		if (this.postMouseMoveListeners) {
-			Object.values(this.postMouseMoveListeners).forEach(f => f(this));
+	_postOnMouseMove() {
+		if (this._postMouseMoveListeners) {
+			Object.values(this._postMouseMoveListeners).forEach(f => f(this));
 		}
 	}
 
-	postOnMouseWheel(e) {
-		if (this.postMouseWheelListeners) {
-			Object.values(this.postMouseWheelListeners).forEach(f => f(this, e));
+	_postOnMouseWheel(e) {
+		if (this._postMouseWheelListeners) {
+			Object.values(this._postMouseWheelListeners).forEach(f => f(this, e));
 		}
 	}
 
 	getDepthSorter() {
-		const allObjs = this.allObjs;
+		const allObjs = this._allObjs;
 		return function (aid, bid) {
 			const a = allObjs[aid];
 			const b = allObjs[bid];
@@ -196,7 +196,7 @@ export default class NViewport {
 	}
 
 	registerObj(obj) {
-		this.allObjs[obj.uuid] = obj;
+		this._allObjs[obj.uuid] = obj;
 		if (obj.drawable) {
 			this.registerDrawnObj(obj);
 		}
@@ -207,114 +207,114 @@ export default class NViewport {
 	}
 
 	registerDrawnObj(obj) {
-		obj.drawRegisterNum = this.drawRegisterCounter++;
-		this.drawnObjIds.add(obj.uuid);
+		obj.drawRegisterNum = this._drawRegisterCounter++;
+		this._drawnObjIds.add(obj.uuid);
 		// this.drawnObjIdsSorted = Array.from(this.drawnObjIds);
 		// this.drawnObjIdsSorted.sort(this.getReversedDepthSorter());
 	}
 
 	registerMouseListeningObj(obj) {
-		this.mouseListeningObjIds.add(obj.uuid);
-		this.mouseListeningObjIdsSorted = Array.from(this.mouseListeningObjIds);
-		this.mouseListeningObjIdsSorted.sort(this.getDepthSorter());
+		this._mouseListeningObjIds.add(obj.uuid);
+		this._mouseListeningObjIdsSorted = Array.from(this._mouseListeningObjIds);
+		this._mouseListeningObjIdsSorted.sort(this.getDepthSorter());
 	}
 
 	registerMouseOverObj(obj) {
 		obj.mouseOverlapping = true;
-		this.mouseOverObjIds.add(obj.uuid);
-		this.mouseOverObjIdsSorted = Array.from(this.mouseOverObjIds);
-		this.mouseOverObjIdsSorted.sort(this.getDepthSorter());
+		this._mouseOverObjIds.add(obj.uuid);
+		this._mouseOverObjIdsSorted = Array.from(this._mouseOverObjIds);
+		this._mouseOverObjIdsSorted.sort(this.getDepthSorter());
 	}
 
 	registerHeldObj(obj) {
 		obj.held = true;
-		this.heldObjIds.add(obj.uuid);
-		this.heldObjIdsSorted = Array.from(this.heldObjIds);
-		this.heldObjIdsSorted.sort(this.getDepthSorter());
+		this._heldObjIds.add(obj.uuid);
+		this._heldObjIdsSorted = Array.from(this._heldObjIds);
+		this._heldObjIdsSorted.sort(this.getDepthSorter());
 	}
 
 	registerDraggedObj(obj) {
 		obj.dragged = true;
-		this.draggedObjIds.add(obj.uuid);
-		this.draggedObjIdsSorted = Array.from(this.draggedObjIds);
-		this.draggedObjIdsSorted.sort(this.getDepthSorter());
+		this._draggedObjIds.add(obj.uuid);
+		this._draggedObjIdsSorted = Array.from(this._draggedObjIds);
+		this._draggedObjIdsSorted.sort(this.getDepthSorter());
 	}
 
 	unregisterDrawnObj(obj) {
-		this.drawnObjIds.delete(obj.uuid);
+		this._drawnObjIds.delete(obj.uuid);
 		// removeItem(this.drawnObjIdsSorted, obj.uuid);
 		// this.drawnObjIdsSorted = Array.from(this.drawnObjIds);
 		// this.drawnObjIdsSorted.sort(this.getReversedDepthSorter());
 	}
 
 	unregisterMouseListeningObj(obj) {
-		this.mouseListeningObjIds.delete(obj.uuid);
+		this._mouseListeningObjIds.delete(obj.uuid);
 		// removeItem(this.mouseListeningObjIdsSorted, obj.uuid);
-		this.mouseListeningObjIdsSorted = Array.from(this.mouseListeningObjIds);
-		this.mouseListeningObjIdsSorted.sort(this.getDepthSorter());
+		this._mouseListeningObjIdsSorted = Array.from(this._mouseListeningObjIds);
+		this._mouseListeningObjIdsSorted.sort(this.getDepthSorter());
 	}
 
 	unregisterMouseOverObj(obj) {
 		obj.mouseOverlapping = false;
-		this.mouseOverObjIds.delete(obj.uuid);
+		this._mouseOverObjIds.delete(obj.uuid);
 		// removeItem(this.mouseOverObjIdsSorted, obj.uuid);
-		this.mouseOverObjIdsSorted = Array.from(this.mouseOverObjIds);
-		this.mouseOverObjIdsSorted.sort(this.getDepthSorter());
+		this._mouseOverObjIdsSorted = Array.from(this._mouseOverObjIds);
+		this._mouseOverObjIdsSorted.sort(this.getDepthSorter());
 	}
 
 	unregisterHeldObj(obj) {
 		obj.held = false;
-		this.heldObjIds.delete(obj.uuid);
+		this._heldObjIds.delete(obj.uuid);
 		// removeItem(this.heldObjIdsSorted, obj.uuid);
-		this.heldObjIdsSorted = Array.from(this.heldObjIds);
-		this.heldObjIdsSorted.sort(this.getDepthSorter());
+		this._heldObjIdsSorted = Array.from(this._heldObjIds);
+		this._heldObjIdsSorted.sort(this.getDepthSorter());
 	}
 
 	unregisterDraggedObj(obj) {
 		obj.dragged = false;
-		this.draggedObjIds.delete(obj.uuid);
+		this._draggedObjIds.delete(obj.uuid);
 		// removeItem(this.heldObjIdsSorted, obj.uuid);
-		this.draggedObjIdsSorted = Array.from(this.draggedObjIds);
-		this.draggedObjIdsSorted.sort(this.getDepthSorter());
+		this._draggedObjIdsSorted = Array.from(this._draggedObjIds);
+		this._draggedObjIdsSorted.sort(this.getDepthSorter());
 	}
 
 	unregisterAllDrawnObjs() {
-		this.drawnObjIds.clear();
+		this._drawnObjIds.clear();
 		// this.drawnObjIdsSorted = [];
-		this.registerDrawnObj(this.background);
+		this.registerDrawnObj(this._background);
 	}
 
 	unregisterAllMouseListeningObjs() {
-		this.mouseListeningObjIds.clear();
-		this.mouseListeningObjIdsSorted = [];
-		this.registerMouseListeningObj(this.background);
+		this._mouseListeningObjIds.clear();
+		this._mouseListeningObjIdsSorted = [];
+		this.registerMouseListeningObj(this._background);
 	}
 
 	unregisterAllMouseOverObjs() {
-		this.mouseOverObjIds.forEach(id => this.allObjs[id].mouseOverlapping = false);
-		this.mouseOverObjIds.clear();
-		this.mouseOverObjIdsSorted = [];
+		this._mouseOverObjIds.forEach(id => this._allObjs[id].mouseOverlapping = false);
+		this._mouseOverObjIds.clear();
+		this._mouseOverObjIdsSorted = [];
 	}
 
 	unregisterAllHeldObjs() {
-		this.heldObjIds.forEach(id => this.allObjs[id].held = false);
-		this.heldObjIds.clear();
-		this.heldObjIdsSorted = [];
+		this._heldObjIds.forEach(id => this._allObjs[id].held = false);
+		this._heldObjIds.clear();
+		this._heldObjIdsSorted = [];
 	}
 
 	unregisterAllDraggedObjs() {
-		this.draggedObjIds.forEach(id => this.allObjs[id].dragged = false);
-		this.draggedObjIds.clear();
-		this.draggedObjIdsSorted = [];
+		this._draggedObjIds.forEach(id => this._allObjs[id].dragged = false);
+		this._draggedObjIds.clear();
+		this._draggedObjIdsSorted = [];
 	}
 
 	forget(obj) {
-		if (obj === this.background) {
+		if (obj === this._background) {
 			return false;
 		}
 
 		obj.onForget();
-		delete this.allObjs[obj.id];
+		delete this._allObjs[obj.id];
 		this.unregisterDrawnObj(obj);
 		this.unregisterMouseListeningObj(obj);
 		this.unregisterMouseOverObj(obj);
@@ -322,11 +322,11 @@ export default class NViewport {
 		this.unregisterDraggedObj(obj);
 		this.queueRedraw();
 		// update mouse logic in case an object is removed that was preventing a lower object from being touched
-		this.mousePosUpdated();
+		this._mousePosUpdated();
 	}
 
 	forgetAll() {
-		for (const obj of Object.values(this.allObjs)) {
+		for (const obj of Object.values(this._allObjs)) {
 			this.forget(obj);
 		}
 	}
@@ -337,7 +337,7 @@ export default class NViewport {
 		// console.log(ticks + " : " + deltaTime + " : " + overflow);
 	}
 
-	setupLoop() {
+	_setupLoop() {
 		const self = this;
 		let currentTime = Date.now();
 		let lastTime = currentTime;
@@ -377,20 +377,20 @@ export default class NViewport {
 	}
 
 	queueRedraw() {
-		if (!this.redrawQueued) {
-			this.redrawQueued = true;
-			setTimeout(_ => this.redraw.call(this), 0);
+		if (!this._redrawQueued) {
+			this._redrawQueued = true;
+			setTimeout(_ => this._redraw.call(this), 0);
 		}
 	}
 
-	redraw() {
-		if (this.setupDone) {
-			this.redrawQueued = false;
-			const drawnObjIdsSorted = Array.from(this.drawnObjIds);
+	_redraw() {
+		if (this._setupDone) {
+			this._redrawQueued = false;
+			const drawnObjIdsSorted = Array.from(this._drawnObjIds);
 			drawnObjIdsSorted.sort(this.getReversedDepthSorter());
-			this.ctx.setTransform(this.zoomFactor, 0, 0, this.zoomFactor, this.panCenter.x + this.vpCenter.x, this.panCenter.y + this.vpCenter.y);
+			this.ctx.setTransform(this._zoomFactor, 0, 0, this._zoomFactor, this._panCenter.x + this._vpCenter.x, this._panCenter.y + this._vpCenter.y);
 			for (const uuid of drawnObjIdsSorted) {
-				const obj = this.allObjs[uuid];
+				const obj = this._allObjs[uuid];
 				obj.draw(this.ctx);
 			}
 			this.onRedraw();
@@ -404,7 +404,7 @@ export default class NViewport {
 	// 	this.ctx.fillRect(pos.x, pos.y, w * this.zoomFactor, h * this.zoomFactor);
 	// }
 
-	makeElements() {
+	_makeElements() {
 		this.container = document.createElement("div");
 		this.container.classList.add("vpContainer");
 		this.container.style.width = "100%";
@@ -420,38 +420,37 @@ export default class NViewport {
 	}
 
 	pageToViewSpace(npoint) {
-		return npoint.subtractp(this.panCenter.addp(this.vpCenter)).divide1(this.zoomFactor).multiply2(1, 1); //.subtract2(this.canvas.width / 2, this.canvas.height / 2);
-		// return npoint.subtractp(this.panCenter).divide1(this.zoomFactor).subtract2(this.canvas.width / 2, this.canvas.height / 2).multiply2(1, -1);
+		return npoint.subtractp(this._panCenter.addp(this._vpCenter)).divide1(this._zoomFactor).multiply2(1, 1);
 	}
 
 	canvasToViewSpace(npoint) {
-		return npoint.multiply2(1, 1).add2(this.canvas.width / 2, this.canvas.height / 2).multiply1(this.zoomFactor).addp(this.panCenter.addp(this.vpCenter));
+		return npoint.multiply2(1, 1).add2(this.canvas.width / 2, this.canvas.height / 2).multiply1(this._zoomFactor).addp(this._panCenter.addp(this._vpCenter));
 	}
 
-	setupScrollLogic() {
+	_setupScrollLogic() {
 		const self = this;
 		self.resizeObserver = new ResizeObserver(function (e) {
 			const resizeRect = e[0].contentRect;
 			self.canvas.width = resizeRect.width;
 			self.canvas.height = resizeRect.height;
-			self.canvasDims = new NPoint(self.canvas.width, self.canvas.height);
-			self.vpCenter = self.canvasDims.divide1(2);
+			self._canvasDims = new NPoint(self.canvas.width, self.canvas.height);
+			self._vpCenter = self._canvasDims.divide1(2);
 			self.queueRedraw();
 		});
 		self.resizeObserver.observe(this.container);
 	}
 
-	mousePosUpdated() {
-		const newMousePos = this.pageToViewSpace(this.mouseElemPos);
-		this.mouseDelta = newMousePos.subtractp(this.mousePos);
-		this.preOnMouseMove();
-		if (this.mouseDown) {
-			this.mouseDragMaxDelta = Math.max(this.mouseDragMaxDelta, this.mouseDownPos.subtractp(newMousePos).length());
-			this.mouseDragDistance += this.mouseDelta.length();
-			if (this.mouseDragDistance >= this.nonDragThreshold) {
-				for (const uuid of this.heldObjIdsSorted) {
-					const obj = this.allObjs[uuid];
-					if (!this.draggedObjIds.has(uuid)) {
+	_mousePosUpdated() {
+		const newMousePos = this.pageToViewSpace(this._mouseElemPos);
+		this._mouseDelta = newMousePos.subtractp(this._mousePos);
+		this._preOnMouseMove();
+		if (this._mouseDown) {
+			this._mouseDragMaxDelta = Math.max(this._mouseDragMaxDelta, this._mouseDownPos.subtractp(newMousePos).length());
+			this._mouseDragDistance += this._mouseDelta.length();
+			if (this._mouseDragDistance >= this.nonDragThreshold) {
+				for (const uuid of this._heldObjIdsSorted) {
+					const obj = this._allObjs[uuid];
+					if (!this._draggedObjIds.has(uuid)) {
 						this.registerDraggedObj(obj);
 						obj.onDragStarted();
 					}
@@ -459,13 +458,13 @@ export default class NViewport {
 				}
 			}
 		}
-		this.mousePos = newMousePos;
+		this._mousePos = newMousePos;
 
 		const currentMousedOverObjIds = new Set();
-		for (const uuid of this.mouseListeningObjIdsSorted) {
-			const obj = this.allObjs[uuid];
+		for (const uuid of this._mouseListeningObjIdsSorted) {
+			const obj = this._allObjs[uuid];
 			if (obj.mouseListening) {
-				if (obj.isOverlapping(this.mousePos)) {
+				if (obj.isOverlapping(this._mousePos)) {
 					currentMousedOverObjIds.add(uuid);
 					if (obj.isMouseBlockingOverlap()) {
 						break;
@@ -474,12 +473,12 @@ export default class NViewport {
 			}
 		}
 
-		const prevMousedOverObjIds = new Set(this.mouseOverObjIds);
+		const prevMousedOverObjIds = new Set(this._mouseOverObjIds);
 		// existing & new moused over objs
-		if (this.mouseWithin) {
+		if (this._mouseWithin) {
 			for (const uuid of currentMousedOverObjIds) {
 				if (!prevMousedOverObjIds.has(uuid)) {
-					const obj = this.allObjs[uuid];
+					const obj = this._allObjs[uuid];
 					this.registerMouseOverObj(obj);
 					obj.onMouseEntered();
 				}
@@ -489,36 +488,36 @@ export default class NViewport {
 		// no longer moused over objs
 		for (const uuid of prevMousedOverObjIds) {
 			if (!currentMousedOverObjIds.has(uuid)) {
-				const obj = this.allObjs[uuid];
+				const obj = this._allObjs[uuid];
 				this.unregisterMouseOverObj(obj);
 				obj.onMouseExited();
 			}
 		}
 
-		this.postOnMouseMove();
+		this._postOnMouseMove();
 	}
 
 	keyPressed(code) {}
 
 	keyReleased(code) {}
 
-	setupKeyListeners() {
+	_setupKeyListeners() {
 		const self = this;
 		document.addEventListener("keydown", function (e) {
 			const keyCode = e.key;
 			switch (keyCode) {
 				case 16:
-					self.shiftDown = true;
+					self._shiftDown = true;
 					break;
 				case 17:
-					self.ctrlDown = true;
+					self._ctrlDown = true;
 					break;
 				case 18:
-					self.altDown = true;
+					self._altDown = true;
 					break;
 				default:
-					if (self.mouseWithin) {
-						self.downKeys.add(keyCode);
+					if (self._mouseWithin) {
+						self._downKeys.add(keyCode);
 						self.keyPressed(keyCode);
 					}
 			}
@@ -529,89 +528,91 @@ export default class NViewport {
 			const keyCode = e.key;
 			switch (keyCode) {
 				case 16:
-					self.shiftDown = false;
+					self._shiftDown = false;
 					break;
 				case 17:
-					self.ctrlDown = false;
+					self._ctrlDown = false;
 					break;
 				case 18:
-					self.altDown = false;
+					self._altDown = false;
 					break;
 				default:
-					if (self.downKeys.delete(keyCode)) {
+					if (self._downKeys.delete(keyCode)) {
 						self.keyReleased(keyCode);
 					}
 			}
 
 		});
-		//TODO add recenter button (space?)
-
 	}
 
-	zoomUpdatePanCenter(prevZoomFactor, zoomCenter = null) {
+	_zoomUpdatePanCenter(prevZoomFactor, zoomCenter = null, quiet=false) {
 		if (zoomCenter === null) {
-			switch (this.zoomCenterMode) {
+			switch (this._zoomCenterMode) {
 				case "center":
-					zoomCenter = this.vpCenter;
+					zoomCenter = this._vpCenter;
 					break;
 				case "mouse":
-					zoomCenter = this.mouseElemPos;
+					zoomCenter = this._mouseElemPos;
 					break;
 			}
 		}
 
-		this.panCenter = this.panCenter.subtractp(
-			zoomCenter.subtractp(this.panCenter.addp(this.vpCenter))
-			.divide1(prevZoomFactor).multiply1(this.zoomFactor - prevZoomFactor)
+		this._panCenter = this._panCenter.subtractp(
+			zoomCenter.subtractp(this._panCenter.addp(this._vpCenter))
+			.divide1(prevZoomFactor).multiply1(this._zoomFactor - prevZoomFactor)
 		);
-		this.mousePosUpdated();
+		if(!quiet){
+			this._mousePosUpdated();
+		}
 		this.queueRedraw();
 	}
 
 	zoomFactorToCounter(factor) {
-		return Math.log(factor) / Math.log(this.zoomCounterBase);
+		return Math.log(factor) / Math.log(this._zoomCounterBase);
 	}
 
 	zoomCounterToFactor(counter) {
-		return Math.pow(this.zoomCounterBase, -counter);
+		return Math.pow(this._zoomCounterBase, -counter);
 	}
 
-	setZoomFactor(newZoomFactor, zoomCenter = null) {
-		const prevZoomFactor = this.zoomFactor;
-		this.zoomFactor = clamp(newZoomFactor, this.minZoomFactor, this.maxZoomFactor);
-		this.zoomCounter = this.zoomFactorToCounter(this.zoomFactor);
-		this.zoomUpdatePanCenter(prevZoomFactor, zoomCenter);
+	setZoomFactor(newZoomFactor, zoomCenter = null, quiet = false) {
+		const prevZoomFactor = this._zoomFactor;
+		this._zoomFactor = clamp(newZoomFactor, this._minZoomFactor, this._maxZoomFactor);
+		this._zoomCounter = this.zoomFactorToCounter(this._zoomFactor);
+		this._zoomUpdatePanCenter(prevZoomFactor, zoomCenter, quiet);
 	}
 
-	setZoomCounter(newZoomCounter, zoomCenter = null) {
-		const prevZoomFactor = this.zoomFactor;
-		this.zoomCounter = clamp(newZoomCounter, this.minZoomCounter, this.maxZoomCounter);
-		this.zoomFactor = this.zoomCounterToFactor(this.zoomCounter);
-		this.zoomUpdatePanCenter(prevZoomFactor, zoomCenter);
+	setZoomCounter(newZoomCounter, zoomCenter = null, quiet = false) {
+		const prevZoomFactor = this._zoomFactor;
+		this._zoomCounter = clamp(newZoomCounter, this._minZoomCounter, this._maxZoomCounter);
+		this._zoomFactor = this.zoomCounterToFactor(this._zoomCounter);
+		this._zoomUpdatePanCenter(prevZoomFactor, zoomCenter, quiet);
 	}
 
-	setPanCenter(newCenter) {
-		this.panCenter = newCenter;
-		this.mousePosUpdated();
+	setPanCenter(newCenter, quiet = false) {
+		this._panCenter = newCenter;
+		if (!quiet) {
+			this._mousePosUpdated();
+		}
 		this.queueRedraw();
 	}
 
-	setupMouseListeners() {
+	_setupMouseListeners() {
 		const self = this;
 		this.container.addEventListener("pointerenter", function (e) {
-			self.mouseWithin = true;
+			self._mouseWithin = true;
 		});
 
 		this.container.addEventListener("pointerleave", function (e) {
-			self.mouseWithin = false;
+			self._mouseWithin = false;
 		});
 
 		this.container.addEventListener("wheel", function (e) {
-			self.preOnMouseWheel(e);
+			self._preOnMouseWheel(e);
 
 			if (e.ctrlKey) {
-				if (self.minZoomFactor < self.maxZoomFactor) {
-					self.setZoomCounter(self.zoomCounter + (e.deltaY * self.zoomSensitivity));
+				if (self._minZoomFactor < self._maxZoomFactor) {
+					self.setZoomCounter(self._zoomCounter + (e.deltaY * self.zoomSensitivity));
 					e.preventDefault();
 				}
 			} else {
@@ -620,56 +621,56 @@ export default class NViewport {
 					if (self.inversePanning) {
 						centerDelta = centerDelta.negate();
 					}
-					self.setPanCenter(self.panCenter.addp(centerDelta));
+					self.setPanCenter(self._panCenter.addp(centerDelta));
 					e.preventDefault();
 				}
 			}
-			self.postOnMouseWheel(e);
+			self._postOnMouseWheel(e);
 		});
 
 		this.container.addEventListener("pointerdown", function (e) {
 			self.queueRedraw();
-			self.mouseElemDownPos = self.mouseElemPos;
-			self.mouseDownPos = self.pageToViewSpace(self.mouseElemPos);
-			self.mouseDown = true;
-			self.preOnMouseDown();
-			for (const uuid of self.mouseOverObjIdsSorted) {
-				const obj = self.allObjs[uuid];
+			self._mouseElemDownPos = self._mouseElemPos;
+			self._mouseDownPos = self.pageToViewSpace(self._mouseElemPos);
+			self._mouseDown = true;
+			self._preOnMouseDown();
+			for (const uuid of self._mouseOverObjIdsSorted) {
+				const obj = self._allObjs[uuid];
 				self.registerHeldObj(obj);
 				obj.onPressed(self);
 				if (obj.isMouseBlockingPress(self)) {
 					break;
 				}
 			}
-			self.postOnMouseDown();
+			self._postOnMouseDown();
 		});
 
 		document.addEventListener("pointerup", function (e) {
 			self.queueRedraw();
-			self.preOnMouseUp();
-			self.mouseDown = false;
-			for (const uuid of self.mouseOverObjIdsSorted) {
-				const obj = self.allObjs[uuid];
+			self._preOnMouseUp();
+			self._mouseDown = false;
+			for (const uuid of self._mouseOverObjIdsSorted) {
+				const obj = self._allObjs[uuid];
 				obj.onMouseUp();
 				if (obj.isMouseBlockingPress()) {
 					break;
 				}
 			}
 
-			for (const uuid of self.heldObjIdsSorted) {
-				const obj = self.allObjs[uuid];
+			for (const uuid of self._heldObjIdsSorted) {
+				const obj = self._allObjs[uuid];
 				obj.onUnpressed();
-				if (self.mouseDragDistance >= self.nonDragThreshold) {
+				if (self._mouseDragDistance >= self.nonDragThreshold) {
 					obj.onDragEnded();
 				} else {
 					obj.onClicked();
 				}
 			}
-			self.mouseDragDistance = 0;
-			self.mouseDragMaxDelta = 0;
+			self._mouseDragDistance = 0;
+			self._mouseDragMaxDelta = 0;
 			self.unregisterAllHeldObjs();
 			self.unregisterAllDraggedObjs();
-			self.postOnMouseUp();
+			self._postOnMouseUp();
 		});
 
 		// this.container.style.touchAction = "none";
@@ -679,25 +680,25 @@ export default class NViewport {
 				e.pageY - self.container.offsetTop
 			);
 
-			self.mouseElemDelta = newMouseElemPos.subtractp(self.mouseElemPos);
-			self.mouseElemPos = newMouseElemPos;
-			self.mousePosUpdated();
+			self._mouseElemDelta = newMouseElemPos.subtractp(self._mouseElemPos);
+			self._mouseElemPos = newMouseElemPos;
+			self._mousePosUpdated();
 		});
 	}
 
 	suggestCursor(type, count = 1) {
-		this.cursorSuggests[type] = (this.cursorSuggests[type] || 0) + count
-		this.refreshCursorType();
+		this._cursorSuggests[type] = (this._cursorSuggests[type] || 0) + count
+		this._refreshCursorType();
 	}
 
 	unsuggestCursor(type, count = 1) {
-		this.cursorSuggests[type] = Math.max(0, (this.cursorSuggests[type] || 0) - count);
-		this.refreshCursorType();
+		this._cursorSuggests[type] = Math.max(0, (this._cursorSuggests[type] || 0) - count);
+		this._refreshCursorType();
 	}
 
-	refreshCursorType() {
-		for (const type of this.cursorPriorities) {
-			if (this.cursorSuggests[type]) {
+	_refreshCursorType() {
+		for (const type of this._cursorPriorities) {
+			if (this._cursorSuggests[type]) {
 				this.canvas.style.cursor = type;
 				break;
 			}

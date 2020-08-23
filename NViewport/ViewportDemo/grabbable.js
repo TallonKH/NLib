@@ -15,6 +15,7 @@ export default class GrabObj extends VPObject {
     setColor(color){
         this.color = color;
         this.colorHex = color.toHex();
+        this.vp.queueRedraw();
     }
 
     draw(ctx) {
@@ -44,7 +45,8 @@ export default class GrabObj extends VPObject {
     
     onDragged() {
         super.onDragged();
-        this.position = this.dragInitialPosition.addp(this.vp.mousePos.subtractp(this.vp.mouseDownPos));
+        this.position = this.dragInitialPosition.addp(this.vp._mousePos.subtractp(this.vp._mouseDownPos));
+        this.vp.queueRedraw();
     }
     
     onDragEnded() {
@@ -56,11 +58,13 @@ export default class GrabObj extends VPObject {
     onMouseEntered() {
         super.onMouseEntered();
         this.suggestCursor("pointer");
+        this.vp.queueRedraw();
     }
     
     onMouseExited() {
         super.onMouseExited();
         this.unsuggestCursor("pointer");
+        this.vp.queueRedraw();
     }
 
     onClicked() {

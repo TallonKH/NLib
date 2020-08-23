@@ -19,7 +19,7 @@ function setupElements() {
         "panSensitivity": 0.5,
         "zoomCenter": "mouse"
     });
-    viewport.background.color = "#1a1a1a"
+    viewport._background.color = "#1a1a1a"
     viewport.setup(document.getElementById("rootDiv"));
 }
 
