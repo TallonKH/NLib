@@ -1,0 +1,109 @@
+export default class NLinkedList {
+    constructor(){
+        this._size = 0
+        this._head = null
+        this._tail = null
+    }
+
+    _removeNode(node){
+        const next = node._next;
+        const prev = node._prev;
+        if(next !== null){
+            next._prev = prev;
+        }
+        if(prev !== null){
+            prev._next = next;
+        }
+        this._size--;
+    }
+
+    iterate(func){
+        let current = this._head;
+        while(current){
+            func(current.value);
+            current = current._next;
+        }
+    }
+
+    iterateReverse(func){
+        let current = this._tail;
+        while(current){
+            func(current.value);
+            current = current._prev;
+        }
+    }
+
+    getSize(){
+        return this._size;
+    }
+
+    peekHead(){
+        return this._head.value;
+    }
+
+    popHead(){
+        const popped = this._head;
+        this._head = popped._next;
+        this._removeNode(popped);
+        return popped.value;
+    }
+
+    pushHead(value){
+        const node = new NLinkedListNode(value);
+        if(this._size == 0){
+            // if list is empty, make both head and tail
+            this._tail = node;
+        }else{
+            // link this node to the existing head and vice versa
+            node._next = this._head;
+            if(this._head){
+                this._head._prev = node;
+            }
+        }
+        this._head = node;
+        this._size++;
+    }
+
+    peekTail(){
+        return this._tail.value;
+    }
+
+    popTail(){
+        const popped = this._tail;
+        this._tail = popped._prev;
+        this._removeNode(popped);
+        return popped.value;
+    }
+
+    pushTail(value){
+        const node = new NLinkedListNode(value);
+        if(this._size == 0){
+            // if list is empty, make both head and tail
+            this._head = node;
+        }else{
+            // link this node to the existing tail and vice versa
+            node._prev = this._tail;
+            if(this._tail){
+                this._tail._next = node;
+            }
+        }
+        this._tail = node;
+        this._size++;
+    }
+}
+
+class NLinkedListNode {
+    constructor(value){
+        this.value = value;
+        this._next = null;
+        this._prev = null;
+    }
+
+    next(){
+        return this._next
+    }
+
+    prev(){
+        return this._prev
+    }
+}
