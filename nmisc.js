@@ -1,3 +1,16 @@
+export function identity(a) {
+    return a;
+}
+
+export function compose(...funcs){
+    const existing = funcs[0]
+    for(let i=1, l=funcs.length; i<l; i++){
+        const current = funcs[i];
+        existing = val => current(existing(val));
+    }
+    return existing;
+}
+
 export function getRand(array) {
 	return array[Math.floor(Math.random() * array.length)];
 }

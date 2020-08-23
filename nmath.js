@@ -2,7 +2,7 @@ export function floorMod(a, b) {
 	return ((a % b) + b) % b;
 }
 
-export function clamp(a, min, max) {
+export function clamp(a, min = 0.0, max = 1.0) {
 	return Math.min(Math.max(min, a), max);
 }
 
