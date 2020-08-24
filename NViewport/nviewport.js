@@ -546,7 +546,6 @@ export default class NViewport {
 	}
 
 	_zoomUpdatePanCenter(prevZoomFactor, zoomCenter = null, quiet=false) {
-		console.log(this._zoomFactor.toFixed(3) + " : " + this._zoomCounter.toFixed(3))
 		if (zoomCenter === null) {
 			switch (this._zoomCenterMode) {
 				case "center":
