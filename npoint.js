@@ -1,8 +1,45 @@
+import {clamp} from "./nmath.js";
+
 export default class NPoint {
 	constructor(x = 0, y = 0) {
 		this.x = x;
 		this.y = y;
 		Object.freeze(this);
+	}
+
+	clamp1(mag){
+		return new NPoint(
+			clamp(this.x,  -mag, mag),
+			clamp(this.y,  -mag, mag)
+		);
+	}
+
+	clamp2(min, max){
+		return new NPoint(
+			clamp(this.x,  min, max),
+			clamp(this.y,  min, max)
+		);
+	}
+
+	clamp4(minX, maxX, minY, maxY){
+		return new NPoint(
+			clamp(this.x,  minX, maxX),
+			clamp(this.y,  minY, maxY)
+		);
+	}
+
+	clamp1p(mag){
+		return new NPoint(
+			clamp(this.x,  -mag.x, mag.x),
+			clamp(this.y,  -mag.y, mag.y)
+		);
+	}
+
+	clamp2p(min, max){
+		return new NPoint(
+			clamp(this.x,  min.x, max.x),
+			clamp(this.y,  min.y, max.y)
+		);
 	}
 
 	toString() {
