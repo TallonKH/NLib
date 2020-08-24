@@ -7,7 +7,7 @@ export default class GrabObj extends VPObject {
             "mouseListening": true,
             "position": position
         })
-        this.size = 15;
+        this._size = 15;
         this.colorHex = "#aaa"
         this.color = NColor.fromHex(this.colorHex);
     }
@@ -15,12 +15,12 @@ export default class GrabObj extends VPObject {
     setColor(color){
         this.color = color;
         this.colorHex = color.toHex();
-        this.vp.queueRedraw();
+        this._vp.queueRedraw();
     }
 
     draw(ctx) {
         ctx.fillStyle = this.color.toHex();
-        if (this.held || (this.mouseOverlapping && !this.vp.mouseDown)) {
+        if (this._held || (this._mouseOverlapping && !this._vp.mouseDown)) {
             ctx.lineWidth = 6;
             ctx.strokeStyle = "#ec5";
             this.strokeCircle(ctx);
@@ -39,37 +39,37 @@ export default class GrabObj extends VPObject {
     onDragStarted() {
         super.onDragStarted();
         this.suggestCursor("grabbing");
-        this.dragInitialPosition = this.position;
-        this.zSubOrder = 1;
+        this.dragInitialPosition = this._position;
+        this._zSubOrder = 1;
     }
     
     onDragged() {
         super.onDragged();
-        this.position = this.dragInitialPosition.addp(this.vp._mousePos.subtractp(this.vp._mouseDownPos));
-        this.vp.queueRedraw();
+        this._position = this.dragInitialPosition.addp(this._vp._mousePos.subtractp(this._vp._mouseDownPos));
+        this._vp.queueRedraw();
     }
     
     onDragEnded() {
         super.onDragEnded();
         this.unsuggestCursor("grabbing");
-        this.zSubOrder = 0;
+        this._zSubOrder = 0;
     }
 
     onMouseEntered() {
         super.onMouseEntered();
         this.suggestCursor("pointer");
-        this.vp.queueRedraw();
+        this._vp.queueRedraw();
     }
     
     onMouseExited() {
         super.onMouseExited();
         this.unsuggestCursor("pointer");
-        this.vp.queueRedraw();
+        this._vp.queueRedraw();
     }
 
     onClicked() {
         super.onClicked();
-        if (this.vp.shiftDown) {
+        if (this._vp.shiftDown) {
 
         }
     }

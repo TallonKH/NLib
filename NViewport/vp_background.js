@@ -13,7 +13,7 @@ export default class VPBackground extends VPObject {
         let currentTransform = ctx.getTransform();
         ctx.resetTransform();
         ctx.fillStyle = this.color;
-        ctx.fillRect(0, 0, this.vp.canvas.width, this.vp.canvas.height);
+        ctx.fillRect(0, 0, this._vp.canvas.width, this._vp.canvas.height);
         ctx.setTransform(currentTransform);
     }
 
@@ -31,21 +31,21 @@ export default class VPBackground extends VPObject {
 
     onDragStarted() {
         super.onDragStarted();
-        if (this.vp.pannable) {
+        if (this._vp.pannable) {
             this.suggestCursor("move");
         }
     }
 
     onDragged() {
         super.onDragged();
-        if (this.vp.pannable) {
-            this.vp.setPanCenter(this.vp._panCenter.addp(this.vp._mouseElemDelta), true);
+        if (this._vp.pannable) {
+            this._vp.setPanCenter(this._vp._panCenter.addp(this._vp._mouseElemDelta), true);
         }
     }
 
     onDragEnded() {
         super.onDragEnded();
-        if (this.vp.pannable) {
+        if (this._vp.pannable) {
             this.unsuggestCursor("move");
         }
     }

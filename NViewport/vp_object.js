@@ -9,20 +9,21 @@ export default class VPObject {
         mouseListening = false,
         zOrder = 0
     } = {}) {
-        this.vp = vp;
-        this.uuid = idCounter++;
+        this._vp = vp;
+        this._uuid = idCounter++;
         
-        this.position = position;
-        this.drawable = drawable;
-        this.mouseListening = mouseListening;
-        this.zOrder = zOrder;
-        this.zSubOrder = 0;
+        this._position = position;
+        this._drawable = drawable;
+        this._mouseListening = mouseListening;
+        this._zOrder = zOrder;
+        this._zSubOrder = 0;
         
-        this.mouseOverlapping = false;
-        this.held = false;
-        this.grabbed = false;
-        this.size = 10;
-        this.suggestedCursors = {};
+        this._mouseOverlapping = false;
+        this._held = false;
+        this._grabbed = false;
+
+        this._size = 10;
+        this._suggestedCursors = {};
     }
 
     static globalInit() {
@@ -30,21 +31,22 @@ export default class VPObject {
     }
 
     suggestCursor(type) {
-        this.suggestedCursors[type] = (this.suggestedCursors[type] || 0) + 1
-        this.vp.suggestCursor(type);
+        this._suggestedCursors[type] = (this._suggestedCursors[type] || 0) + 1
+        this._vp.suggestCursor(type);
     }
 
     unsuggestCursor(type) {
-        this.suggestedCursors[type] = this.suggestedCursors[type] - 1
-        this.vp.unsuggestCursor(type);
+        this._suggestedCursors[type] = this._suggestedCursors[type] - 1
+        this._vp.unsuggestCursor(type);
     }
 
     unsuggestAllCursors() {
-        for (const type in this.suggestedCursors) {
-            this.vp.unsuggestCursor(type, this.suggestedCursors[type]);
+        for (const type in this._suggestedCursors) {
+            this._vp.unsuggestCursor(type, this._suggestedCursors[type]);
         }
-        this.suggestedCursors = {};
+        this._suggestedCursors = {};
     }
+
     isMouseBlockingOverlap() {
         return false;
     }
@@ -54,7 +56,7 @@ export default class VPObject {
     }
 
     isOverlapping(point) {
-        return this.position.subtractp(point).lengthSquared() < Math.pow(this.size, 2);
+        return this._position.subtractp(point).lengthSquared() < Math.pow(this._size, 2);
     }
 
     draw(ctx) {
@@ -73,11 +75,11 @@ export default class VPObject {
 
     fillCircle(ctx) {
         // const adPos = this.vp.canvasToViewSpace(this.position);
-        const adPos = this.position;
+        const adPos = this._position;
         ctx.beginPath();
         ctx.ellipse(
             adPos.x, adPos.y,
-            this.size /* * this.vp.zoomFactor*/, this.size /* * this.vp.zoomFactor*/,
+            this._size, this._size,
             0,
             0, 2 * Math.PI);
         ctx.fill();
@@ -85,63 +87,45 @@ export default class VPObject {
 
     strokeCircle(ctx, scale = 1) {
         const self = this;
-        // const adPos = this.vp.canvasToViewSpace(self.position);
-        const adPos = this.position;
+        const adPos = this._position;
         ctx.beginPath();
         ctx.ellipse(
             adPos.x, adPos.y,
-            self.size /*  * this.vp.zoomFactor */ * scale, self.size /* * this.vp.zoomFactor */ * scale,
+            self._size * scale, self._size * scale,
             0,
             0, 2 * Math.PI);
         ctx.stroke();
     }
 
-    onMouseEntered() {
-        // console.log("ENTER");
-    }
+    onMouseEntered() {}
 
-    onMouseExited() {
-        // console.log("EXIT");
-    }
+    onMouseExited() {}
 
     /** Called when the mouse is pressed over an object */
-    onPressed() {
-        // console.log("DOWN");
-    }
+    onPressed() {}
 
     /** 
-     * Called when the mouse is released after having been pressed on the object, disregarding intermediate/final movements/position.
+     * Called when the mouse is released after having been pressed on the object, regarding of intermediate/final movements/position.
      * Called before both onDragEnded and onClicked
      */
-    onUnpressed() {
-        // console.log("UP");
-    }
+    onUnpressed() {}
 
     /** Called when the mouse is released over an object, regardless of whether it was pressed on the object */
-    onMouseUp() {
-        // console.log("UP");
-    }
+    onMouseUp() {}
 
     /** Called when the mouse is pressed on object and moved a minimum distance */
-    onDragStarted() {
-        // console.log("!! UP");
-    }
+    onDragStarted() {}
 
-    onDragged() {
+    /** Called when the mouse is moved while in drag mode*/
+    onDragged() {}
 
-    }
+    /** Called when the mouse is released while in drag mode */
+    onDragEnded() {}
 
-    /** Called when the mouse is pressed on object and released, after moving a minimum distance */
-    onDragEnded() {
-        // console.log("!! UP");
-    }
+    /** Called when the mouse is pressed and released, without having moved a signiciant distance in between */
+    onClicked() {}
 
-    /** Called when the mouse is pressed on object and released, after moving a limited distance */
-    onClicked() {
-        // console.log("CLICKED");
-    }
-
-    onForget() {
+    onForgotten() {
         this.unsuggestAllCursors();
     }
 }
