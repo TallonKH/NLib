@@ -84,7 +84,7 @@ export default class NViewport {
 		this._preMouseUpListeners = {}
 		this._preMouseClickListeners = {}
 		this._preMouseMoveListeners = {}
-		this._preMouseWheelListeners = {}
+		this._preMouselListeners = {}
 		this._postMouseDownListeners = {}
 		this._postMouseUpListeners = {}
 		this._postMouseClickListeners = {}
@@ -545,7 +545,7 @@ export default class NViewport {
 		});
 	}
 
-	_zoomUpdatePanCenter(prevZoomFactor, zoomCenter = null, quiet=false) {
+	_zoomUpdatePanCenter(prevZoomFactor, zoomCenter = null, quiet = false) {
 		if (zoomCenter === null) {
 			switch (this._zoomCenterMode) {
 				case "center":
@@ -561,7 +561,7 @@ export default class NViewport {
 			zoomCenter.subtractp(this._panCenter.addp(this._vpCenter))
 			.divide1(prevZoomFactor).multiply1(this._zoomFactor - prevZoomFactor)
 		);
-		if(!quiet){
+		if (!quiet) {
 			this._mousePosUpdated();
 		}
 		this.queueRedraw();
@@ -657,14 +657,22 @@ export default class NViewport {
 				}
 			}
 
+
+			const isDrag = self._mouseDragDistance >= self.nonDragThreshold;
+			if (!isDrag) {
+				self._preOnMouseClick();
+			}
 			for (const uuid of self._heldObjIdsSorted) {
 				const obj = self._allObjs[uuid];
 				obj.onUnpressed();
-				if (self._mouseDragDistance >= self.nonDragThreshold) {
+				if (isDrag) {
 					obj.onDragEnded();
 				} else {
 					obj.onClicked();
 				}
+			}
+			if (!isDrag) {
+				self._postOnMouseClick();
 			}
 			self._mouseDragDistance = 0;
 			self._mouseDragMaxDelta = 0;
@@ -675,6 +683,7 @@ export default class NViewport {
 
 		// this.container.style.touchAction = "none";
 		document.addEventListener("pointermove", function (e) {
+			self._preOnMouseMove();
 			const newMouseElemPos = new NPoint(
 				e.pageX - self.container.offsetLeft,
 				e.pageY - self.container.offsetTop
@@ -683,6 +692,7 @@ export default class NViewport {
 			self._mouseElemDelta = newMouseElemPos.subtractp(self._mouseElemPos);
 			self._mouseElemPos = newMouseElemPos;
 			self._mousePosUpdated();
+			self._postOnMouseMove();
 		});
 	}
 
