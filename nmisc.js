@@ -1,14 +1,92 @@
 export function identity(a) {
-    return a;
+	return a;
 }
 
-export function compose(...funcs){
-    let existing = funcs[0]
-    for(let i=1, l=funcs.length; i<l; i++){
-        const current = funcs[i];
-        existing = val => current(existing(val));
-    }
-    return existing;
+/** true if, for every i, a[i] === b[i] */
+export function arraysSame(a, b){
+	if(a === null || b === null){
+		return false;
+	}
+
+	if(a.length != b.length){
+		return false;
+	}
+	
+	for(let i=0, l=a.length; i<l; i++){
+		if(a[i] !== b[i]){
+			return false;
+		}
+	}
+	return true;
+}
+
+export function findSorted(array, item) {
+	let min = 0;
+	let max = array.length - 1;
+	let mid;
+	let midItem;
+	while (true) {
+		mid = Math.floor(mid = (min + max) / 2);
+
+		if(min >= max){
+			return -1;
+		}
+
+		midItem = array[mid];
+		if(midItem == item){
+			return mid;
+		}
+
+		if(midItem > item){
+			max = mid;
+			continue;
+		}
+
+		if(midItem < item){
+			min = mid + 1;
+			continue;
+		}
+	}
+}
+
+export function insertSorted(array, item) {
+	let min = 0;
+	let max = array.length - 1;
+	let mid;
+	let midItem;
+	while (true) {
+		mid = Math.floor(mid = (min + max) / 2);
+
+		if(min >= max){
+			a.splice(max, 0, item);
+			return max;
+		}
+		
+		midItem = array[mid];
+		if(midItem === item){
+			a.splice(mid, 0, item);
+			return mid;
+		}
+
+		if(midItem > item){
+			max = mid;
+			continue;
+		}
+
+		if(midItem < item){
+			min = mid + 1;
+			continue;
+		}
+	}
+}
+
+export function compose(...funcs) {
+	let existing = funcs[0]
+	for (let i = 1, l = funcs.length; i < l; i++) {
+		const current = funcs[i];
+		existing = val => current(existing(val));
+	}
+	return existing;
 }
 
 export function getRand(array) {
@@ -120,7 +198,7 @@ export function getOS() {
 	}
 }
 
-function clearObj(obj) {
+export function clearObj(obj) {
 	for (const key in obj) {
 		delete obj[key];
 	}
