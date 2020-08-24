@@ -1,62 +1,78 @@
 export default class NLinkedList {
-    constructor(){
+    constructor() {
         this._size = 0
         this._head = null
         this._tail = null
     }
 
-    _removeNode(node){
+    _removeNode(node) {
         const next = node._next;
         const prev = node._prev;
-        if(next !== null){
+        if (node === this._head) {
+            this._head = next;
+        }
+        if (node === this._tail) {
+            this._tail = prev;
+        }
+        if (next !== null) {
             next._prev = prev;
         }
-        if(prev !== null){
+        if (prev !== null) {
             prev._next = next;
         }
         this._size--;
     }
 
-    iterate(func){
+    forEach(func) {
         let current = this._head;
-        while(current){
+        while (current) {
             func(current.value);
             current = current._next;
         }
     }
 
-    iterateReverse(func){
+    forEachReverse(func) {
         let current = this._tail;
-        while(current){
+        while (current) {
             func(current.value);
             current = current._prev;
         }
     }
 
-    getSize(){
+    * generator() {
+        let current = this._head;
+        while (current) {
+            yield current.value;
+            current = current._next;
+        }
+    }
+
+    getSize() {
         return this._size;
     }
 
-    peekHead(){
+    peekHead() {
         return this._head.value;
     }
 
-    popHead(){
+    popHead() {
+        if (this._size === 0) {
+            throw "Cannot pop from empty list!";
+        }
         const popped = this._head;
-        this._head = popped._next;
         this._removeNode(popped);
         return popped.value;
     }
 
-    pushHead(value){
+    pushHead(value) {
         const node = new NLinkedListNode(value);
-        if(this._size == 0){
+        if (this._size == 0) {
             // if list is empty, make both head and tail
             this._tail = node;
-        }else{
+        } else {
             // link this node to the existing head and vice versa
             node._next = this._head;
-            if(this._head){
+            if (this._head) {
                 this._head._prev = node;
             }
         }
@@ -64,26 +80,28 @@ export default class NLinkedList {
         this._size++;
     }
 
-    peekTail(){
+    peekTail() {
         return this._tail.value;
     }
 
-    popTail(){
+    popTail() {
+        if (this._size === 0) {
+            throw "Cannot pop from empty list!";
+        }
         const popped = this._tail;
-        this._tail = popped._prev;
         this._removeNode(popped);
         return popped.value;
     }
 
-    pushTail(value){
+    pushTail(value) {
         const node = new NLinkedListNode(value);
-        if(this._size == 0){
+        if (this._size == 0) {
             // if list is empty, make both head and tail
             this._head = node;
-        }else{
+        } else {
             // link this node to the existing tail and vice versa
             node._prev = this._tail;
-            if(this._tail){
+            if (this._tail) {
                 this._tail._next = node;
             }
         }
@@ -93,17 +111,17 @@ export default class NLinkedList {
 }
 
 class NLinkedListNode {
-    constructor(value){
+    constructor(value) {
         this.value = value;
         this._next = null;
         this._prev = null;
     }
 
-    next(){
+    getNext() {
         return this._next
     }
 
-    prev(){
+    getPrev() {
         return this._prev
     }
 }
