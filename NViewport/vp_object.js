@@ -11,14 +11,14 @@ export default class VPObject {
     } = {}) {
         this._vp = vp;
         this._uuid = idCounter++;
-        
+
         this._position = position;
         this._drawable = drawable;
         this._mouseListening = mouseListening;
         this._zOrder = zOrder;
         this._zSubOrder = 0;
-        
-        
+
+
         // true if the pointer is overlapping the object
         this._pointerAware = false;
 
@@ -54,11 +54,6 @@ export default class VPObject {
             this._vp.unsuggestCursor(type, this._suggestedCursors[type]);
         }
         this._suggestedCursors = {};
-    }
-
-    /** if true, will prevent any objects behind from receiving ANY pointer-intersect-based events */
-    blocksPointerEvents() {
-        return false;
     }
 
     intersects(point) {
@@ -103,17 +98,72 @@ export default class VPObject {
         ctx.stroke();
     }
 
+    /**
+     * Return true if this object should indiscriminately block all pointer-based events from reaching lower objects.
+     * 
+     * The affected events are: (onPointerAwarenessStarted, onPointerAwarenessEnded),
+     * (onPointerOverlapStarted, onPointerOverlapMovement, onPointerOverlapEnded),
+     * (onPressed, onUnpressed, onMouseUp, onClicked),
+     * (onDragStarted, onDragged, onDragEnded),
+     * (onWheel)
+     * 
+     * Default behavior: block.
+     */
+    blockAllPointerEvents() {
+        return false;
+    }
+
+    /**
+     * Return true if this object should block the overlap event from reaching lower objects.
+     * 
+     * The affected events are: (onPointerOverlapStarted, onPointerOverlapMovement, onPointerOverlapEnded).
+     * 
+     * Default behavior: block.
+     */
+    blockOverlapEvent(pointerMoveEvent) {
+        return true;
+    }
+
+    /**
+     * Return true if this object should block the click event from reaching lower objects.
+     * 
+     * If true for the mouse down event, will block (onPressed, onDragStarted, onDragged, onDragEnded, onClicked).
+     * 
+     * If true for the mouse up event, will only (onMouseUp). This is to prevent unexpected behavior,
+     * (ie: a dragged object being blocked from realizing that the mouse has been released).
+     * 
+     * Default behavior: block.
+     */
+    blockClickEvent(mouseClickEvent) {
+        return true;
+    }
+
+    /**
+     * Return true if this object should block the wheel event from reaching lower objects.
+     * 
+     * The affected events are: (onWheel).
+     * 
+     * Default behavior: do not block.
+     */
+    blockWheelEvent(mouseClickEvent) {
+        return false;
+    }
+
     /** 
-     * Triggered when the cursor overlaps the object. 
-     * Cannot blocked by other objects.
+     * Triggered when the cursor is intersecting the object, disregarding higher objects. 
+     * 
+     * Can only be blocked with blockAllPointerEvents.
+     * 
      * For the blocking event, see OnPointerOverlapStarted.
      * For most purposes, (ie: highlighting a hovered object), the blocking event should be used.
      */
     onPointerAwarenessStarted(pointerMoveEvent) {}
-    
+
     /** 
-     * Triggered when the cursor stops overlapping the object. 
-     * Cannot be blocked by other objects.
+     * Triggered when the cursor stops intersecting the object, disregarding higher objects. 
+     * 
+     * Can only be blocked with blockAllPointerEvents.
+     * 
      * For the blocking event, see OnPointerOverlapEnded.
      * For most purposes, (ie: highlighting a hovered object), the blocking event should be used.
      */
@@ -121,81 +171,95 @@ export default class VPObject {
 
     /** 
      * Triggered when the cursor overlaps the object, and the event is not blocked by a higher object.
+     * 
+     * Blocking behavior is determined by blockOverlapEvent.
+     * 
      * For most purposes, (ie: highlighting a hovered object), this is the function to use.
-     * Blocking behavior can be changed via the 2nd input (result).
-     * Blocking in this event will also block onPointerOverlapMovement and onPointerOverlapEnded.
      * For the non-blocking event, see onPointerAwarenessStarted.
-     * Default behavior: block.
      */
-    onPointerOverlapStarted(pointerMoveEvent, result) {}
+    onPointerOverlapStarted(pointerMoveEvent) {}
 
     /** 
      * Will occur after onPointerOverlapStarted in the same frame.
      * Will occur before onPointerOverlapEnded in the same frame.
+     * 
+     * Blocking behavior is determined by blockOverlapEvent.
      */
     onPointerOverlapMovement(pointerMoveEvent) {}
 
     /** 
      * Triggered when the cursor stops overlapping the object, and the event is not blocked by a higher object.
+     * 
+     * Blocking behavior is determined by blockOverlapEvent.
+     * 
      * For most purposes, (ie: highlighting a hovered object), this is the function to use.
      * For the non-blocking event, see onPointerAwarenessEnded.
-     * This cannot be blocked directly, but blocking onPointerOverlapStarted will prevent this from being called.
      */
     onPointerOverlapEnded(pointerMoveEvent) {}
 
     /** 
-     * Called when the mouse is pressed over an object 
-     * Blocking behavior can be changed via the 2nd input (result).
-     * Blocking this will also prevent dependent events (onUnpressed, onClicked, onDragStarted, onDragEnded)
-     * Default behavior: block.
+     * Called when the mouse is pressed over an object.
+     * 
+     * Blocking behavior is determined by blockClickEvent.
      */
-    onPressed(pointerDownEvent, result) {}
-
-    /** 
-     * Called when the mouse is released after having been pressed on the object, regarding of intermediate/final movements/position.
-     * Called before both onDragEnded and onClicked.
-     * This cannot be blocked directly, but blocking onPressed will prevent this from being called.
-     */
-    onUnpressed(pointerUpEvent) {}
+    onPressed(pointerDownEvent) {}
 
     /** 
      * Called when the mouse is released over an object, regardless of whether it was pressed on the object 
-     * Blocking behavior can be changed via the 2nd input (result).
-     * Blocking this will NOT prevent calls to onUnpressed, onClicked, or onDragEnded
-     * Default behavior: block.
+     * 
+     * Event order: onMouseUp -> onUnpressed -> onDragEnded/onClicked
+     * 
+     * Blocking behavior is determined by blockClickEvent.
      */
-    onMouseUp(pointerUpEvent, result) {}
-
-    /**
-     * Called when the mouse is pressed on object and moved a minimum distance
-     * This cannot be blocked directly, but blocking onPressed will prevent this from being called.
-     */
-    onDragStarted(pointerDownEvent) {}
+    onMouseUp(mouseClickEvent) {}
 
     /** 
-     * Called when the mouse is moved while in drag mode
-     * This cannot be blocked directly, but blocking onPressed will prevent this from being called.
-    */
+     * Called when the mouse is released after having been pressed on the object, regarding of intermediate/final movements/position.
+     * 
+     * Event order: onMouseUp -> onUnpressed -> onDragEnded/onClicked
+     * 
+     * Blocking behavior is determined by blockClickEvent.
+     */
+    onUnpressed(mouseClickEvent) {}
+
+    /**
+     * Called when the mouse is pressed on object and moved a minimum distance.
+     * 
+     * Blocking behavior is determined by blockClickEvent.
+     */
+    onDragStarted(pointerMoveEvent) {}
+
+    /** 
+     * Called when the mouse is moved while in drag mode. Movement does not have to take place on the object.
+     * 
+     * Blocking behavior is determined by blockClickEvent.
+     */
     onDragged(pointerMoveEvent) {}
 
     /**
-     * Called when the mouse is released while in drag mode
-     * This cannot be blocked directly, but blocking onPressed will prevent this from being called.
+     * Called when the mouse is released while in dragging mode.
+     * 
+     * Event order: onMouseUp -> onUnpressed -> onDragEnded/onClicked
+     * 
+     * Blocking behavior is determined by blockClickEvent.
      */
-    onDragEnded(pointerUpEvent) {}
+    onDragEnded(mouseClickEvent) {}
 
     /** 
-     * Called when the mouse is pressed and released, without having moved a signiciant distance in between.
-     * This cannot be blocked directly, but blocking onPressed will prevent this from being called.
+     * Called when the mouse is pressed on the object and released, without having moved a signiciant distance in between.
+     * 
+     * Event order: onMouseUp -> onUnpressed -> onDragEnded/onClicked
+     * 
+     * Blocking behavior is determined by blockClickEvent.
      */
-    onClicked(pointerUpEvent) {}
+    onClicked(mouseClickEvent) {}
 
     /** 
      * Called when the mouse wheel is used while the cursor is overlapping the object.
-     * Blocking behavior can be changed via the 2nd input (result).
-     * Default behavior: do not block.
-    */
-    onWheel(wheelEvent, result){}
+     * 
+     * Blocking behavior is determined by blockWheelEvent.
+     */
+    onWheel(wheelEvent) {}
 
     onForgotten() {
         this.unsuggestAllCursors();

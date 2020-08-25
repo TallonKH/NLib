@@ -499,17 +499,17 @@ export default class NViewport {
 		// determine pointer awareness
 		const prevPointerAwareObjIds = new Set(this._pointerAwareObjIds);
 		const currentPointerAwareObjIds = new Set();
+		const newlyPointerAwareObjs = [];
 		for (const uuid of this._mouseListeningObjIdsSorted) {
 			const obj = this._allObjs[uuid];
 			if (obj._mouseListening && obj.intersects(this._pointerPos)) {
 				currentPointerAwareObjIds.add(uuid);
 				// is newly aware
 				if (!prevPointerAwareObjIds.has(uuid)) {
-					console.log("aware new " + obj._uuid);
+					newlyPointerAwareObjs.push(obj);
 					this.registerPointerAwareObj(obj);
-					obj.onPointerAwarenessStarted(e);
 				}
-				if (obj.blocksPointerEvents()) {
+				if (obj.blockAllPointerEvents()) {
 					break;
 				}
 			}
@@ -528,44 +528,37 @@ export default class NViewport {
 		// determine overlaps (similar to, but not the same as awareness)
 		const prevPointerOverlappingObjIds = new Set(this._pointerOverlappingObjIds);
 		const currentPointerOverlappingObjIds = new Set();
-
-		let newHighestOverlapBlockingObjId = null;
-		for(const uuid of this._pointerAwareObjIdsSorted){
+		const newlyPointerOverlappingObjs = [];
+		// let newHighestOverlapBlockingObjId = null;
+		for (const uuid of this._pointerAwareObjIdsSorted) {
 			const obj = this._allObjs[uuid];
 			currentPointerOverlappingObjIds.add(uuid);
 
 			// stop at lowest blocking object
-			if(uuid === this._highestOverlapBlockingObjId){
-				// ensure that this.lowestOverlapBlockingObjId will be set to what it was before
-				newHighestOverlapBlockingObjId = uuid;
+			// if (uuid === this._highestOverlapBlockingObjId) {
+			// 	// ensure that this.lowestOverlapBlockingObjId will be set to what it was before
+			// 	newHighestOverlapBlockingObjId = uuid;
+			// 	break;
+			// }
+
+			// newly overlapping
+			if (!prevPointerOverlappingObjIds.has(uuid)) {
+				newlyPointerOverlappingObjs.push(obj);
+				this.registerPointerOverlappingObj(obj);
+			}
+			if (obj.blockOverlapEvent(e)) {
+				// // because this was reached first, it is now the highest blocking
+				// newHighestOverlapBlockingObjId = uuid;
 				break;
 			}
 
-			// newly overlapping
-			if(!prevPointerOverlappingObjIds.has(uuid)){
-				const result = {
-					blocking: true
-				}
-				//TODO add new overlaps to their own lists and call the overlap start event later, so that overlapEnd events of old objects happen before the start events of new ones
-				this.registerPointerOverlappingObj(obj);
-				obj.onPointerOverlapStarted(e, result);
-				console.log("overlap new " + obj._uuid);
-
-				if(result.blocking){
-					// call here because the break prevents the later call
-					obj.onPointerOverlapMovement(e);
-					// because this was reached first, it is now the highest blocking
-					newHighestOverlapBlockingObjId = uuid;
-					break;
-				}
-			}
-			
 			// call down here because it must happen after obj.onPointerOverlapStarted
 			obj.onPointerOverlapMovement(e);
 		}
-		this._highestOverlapBlockingObjId = newHighestOverlapBlockingObjId;
+		// this._highestOverlapBlockingObjId = newHighestOverlapBlockingObjId;
 
-		for(const uuid of prevPointerOverlappingObjIds){
+		// no longer overlapping
+		for (const uuid of prevPointerOverlappingObjIds) {
 			const obj = this._allObjs[uuid];
 			if (!currentPointerOverlappingObjIds.has(uuid)) {
 				this.unregisterPointerOverlappingObj(obj);
@@ -574,7 +567,20 @@ export default class NViewport {
 			}
 		}
 
-		// no longer overlapping
+		// events for newly aware objs
+		// do this down here because started events should happen after ended events
+		for (const obj of newlyPointerAwareObjs) {
+			obj.onPointerAwarenessStarted(e);
+			console.log("aware new " + obj._uuid);
+		}
+
+		// events for newly overlapping objs
+		// do this down here because started events should happen after ended events
+		for (const obj of newlyPointerOverlappingObjs) {
+			obj.onPointerOverlapStarted(e);
+			console.log("overlap new " + obj._uuid);
+		}
+
 		this._postOnPointerMove(e);
 	}
 

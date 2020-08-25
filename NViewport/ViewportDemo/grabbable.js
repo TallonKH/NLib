@@ -7,7 +7,7 @@ export default class GrabObj extends VPObject {
             "mouseListening": true,
             "position": position
         })
-        this._size = 15;
+        this._size = 100;
         this.colorHex = "#aaa"
         this.color = NColor.fromHex(this.colorHex);
     }
