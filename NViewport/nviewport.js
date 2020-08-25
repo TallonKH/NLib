@@ -11,7 +11,7 @@ export default class NViewport {
 		pannable = true,
 		zoomSensitivity = 1,
 		panSensitivity = 0.5,
-		zoomCenterMode = "mouse", //center, mouse, panCenter
+		zoomCenterMode = "pointer", //center, pointer, panCenter
 		backgroundClass = VPBackground
 	} = {}) {
 		this._setupDone = false;
@@ -40,20 +40,21 @@ export default class NViewport {
 		this._mouseDown = false;
 
 		/** raw mouse position (relative to viewport element) */
-		this._mouseElemPos = new NPoint();
-		this._mouseElemDownPos = new NPoint();
-		this._mouseElemDelta = new NPoint();
+		this._pointerElemPos = new NPoint();
+		this._pointerElemDelta = new NPoint();
 
 		/** relative to viewport objects */
-		this._mousePos = new NPoint();
+		this._pointerPos = new NPoint();
 		/** position where mouse was last pressed down */
 		this._mouseDownPos = new NPoint();
 		/** movement of mouse between ticks */
-		this._mouseDelta = new NPoint();
+		this._pointerDelta = new NPoint();
+		/** difference between mouse-down cursor position and current */
+		this._pointerDragDelta = new NPoint();
 		/** cumulative distance that mouse has been dragged in the current press */
-		this._mouseDragDistance = 0;
+		this._pointerDragDistance = 0;
 		/** farthest distance that mouse has been from its press position */
-		this._mouseDragMaxDelta = 0;
+		this._pointerDragMaxDelta = 0;
 
 		this._cursorSuggests = {
 			"default": 1
@@ -68,8 +69,11 @@ export default class NViewport {
 		this._drawRegisterCounter = 0
 		this._drawnObjIds = new Set();
 		this._mouseListeningObjIds = new Set();
-		this._mouseOverObjIds = new Set();
-		this._mouseOverObjIds = new Set();
+		/** objects that the pointer is overlapping */
+		this._pointerAwareObjIds = new Set();
+		/** objects that the pointer is overlapping */
+		this._pointerOverlappingObjIds = new Set();
+		this._highestOverlapBlockingObjId = null;
 		/** objects that the mouse is pressed down on */
 		this._heldObjIds = new Set();
 		/** objects that the mouse is pressed down on and moved sufficiently */
@@ -77,23 +81,25 @@ export default class NViewport {
 
 		// this.drawnObjIdsSorted = []
 		this._mouseListeningObjIdsSorted = []
-		this._mouseOverObjIdsSorted = []
+		this._pointerAwareObjIdsSorted = []
+		this._wheelListeningObjIdsSorted = []
+		this._wheelOverObjIdsSorted = []
 		this._heldObjIdsSorted = []
 		this._draggedObjIdsSorted = []
 
 		this._preMouseDownListeners = {}
 		this._preMouseUpListeners = {}
 		this._preMouseClickListeners = {}
-		this._preMouseMoveListeners = {}
+		this._prePointerMoveListeners = {}
 		this._preMouselListeners = {}
 		this._postMouseDownListeners = {}
 		this._postMouseUpListeners = {}
 		this._postMouseClickListeners = {}
-		this._postMouseMoveListeners = {}
+		this._postPointerMoveListeners = {}
 		this._postMouseWheelListeners = {}
 
 		// is the mouse over the viewport?
-		this._mouseWithin = false;
+		this._pointerWithin = false;
 		this._ctrlDown = false;
 		this._shiftDown = false;
 		this._altDown = false;
@@ -139,9 +145,9 @@ export default class NViewport {
 		}
 	}
 
-	_preOnMouseMove(pointerMoveEvent) {
-		if (this._preMouseMoveListeners) {
-			Object.values(this._preMouseMoveListeners).forEach(f => f(this, pointerMoveEvent));
+	_preOnPointerMove(pointerMoveEvent) {
+		if (this._prePointerMoveListeners) {
+			Object.values(this._prePointerMoveListeners).forEach(f => f(this, pointerMoveEvent));
 		}
 	}
 
@@ -169,9 +175,9 @@ export default class NViewport {
 		}
 	}
 
-	_postOnMouseMove(pointerMoveEvent) {
-		if (this._postMouseMoveListeners) {
-			Object.values(this._postMouseMoveListeners).forEach(f => f(this, pointerMoveEvent));
+	_postOnPointerMove(pointerMoveEvent) {
+		if (this._postPointerMoveListeners) {
+			Object.values(this._postPointerMoveListeners).forEach(f => f(this, pointerMoveEvent));
 		}
 	}
 
@@ -210,8 +216,6 @@ export default class NViewport {
 	registerDrawnObj(obj) {
 		obj._drawRegisterNum = this._drawRegisterCounter++;
 		this._drawnObjIds.add(obj._uuid);
-		// this.drawnObjIdsSorted = Array.from(this.drawnObjIds);
-		// this.drawnObjIdsSorted.sort(this.getReversedDepthSorter());
 	}
 
 	registerMouseListeningObj(obj) {
@@ -220,11 +224,18 @@ export default class NViewport {
 		this._mouseListeningObjIdsSorted.sort(this.getDepthSorter());
 	}
 
-	registerMouseOverObj(obj) {
-		obj._mouseOverlapping = true;
-		this._mouseOverObjIds.add(obj._uuid);
-		this._mouseOverObjIdsSorted = Array.from(this._mouseOverObjIds);
-		this._mouseOverObjIdsSorted.sort(this.getDepthSorter());
+	registerPointerAwareObj(obj) {
+		obj._pointerAware = true;
+		this._pointerAwareObjIds.add(obj._uuid);
+		this._pointerAwareObjIdsSorted = Array.from(this._pointerAwareObjIds);
+		this._pointerAwareObjIdsSorted.sort(this.getDepthSorter());
+	}
+
+	registerPointerOverlappingObj(obj) {
+		obj._pointerOverlapping = true;
+		this._pointerOverlappingObjIds.add(obj._uuid);
+		this._pointerOverlappingIdsSorted = Array.from(this._pointerOverlappingObjIds);
+		this._pointerOverlappingIdsSorted.sort(this.getDepthSorter());
 	}
 
 	registerHeldObj(obj) {
@@ -243,30 +254,37 @@ export default class NViewport {
 
 	unregisterDrawnObj(obj) {
 		this._drawnObjIds.delete(obj._uuid);
-		// removeItem(this.drawnObjIdsSorted, obj._uuid);
-		// this.drawnObjIdsSorted = Array.from(this.drawnObjIds);
-		// this.drawnObjIdsSorted.sort(this.getReversedDepthSorter());
 	}
 
 	unregisterMouseListeningObj(obj) {
 		this._mouseListeningObjIds.delete(obj._uuid);
-		// removeItem(this.mouseListeningObjIdsSorted, obj._uuid);
 		this._mouseListeningObjIdsSorted = Array.from(this._mouseListeningObjIds);
 		this._mouseListeningObjIdsSorted.sort(this.getDepthSorter());
 	}
 
-	unregisterMouseOverObj(obj) {
-		obj._mouseOverlapping = false;
-		this._mouseOverObjIds.delete(obj._uuid);
-		// removeItem(this.mouseOverObjIdsSorted, obj._uuid);
-		this._mouseOverObjIdsSorted = Array.from(this._mouseOverObjIds);
-		this._mouseOverObjIdsSorted.sort(this.getDepthSorter());
+	unregisterWheelListeningObj(obj) {
+		this._wheelListeningObjIds.delete(obj._uuid);
+		this._wheelListeningObjIdsSorted = Array.from(this._wheelListeningObjIds);
+		this._wheelListeningObjIdsSorted.sort(this.getDepthSorter());
+	}
+
+	unregisterPointerAwareObj(obj) {
+		obj._pointerAware = false;
+		this._pointerAwareObjIds.delete(obj._uuid);
+		this._pointerAwareObjIdsSorted = Array.from(this._pointerAwareObjIds);
+		this._pointerAwareObjIdsSorted.sort(this.getDepthSorter());
+	}
+
+	unregisterPointerOverlappingObj(obj) {
+		obj._pointerOverlapping = false;
+		this._pointerOverlappingObjIds.delete(obj._uuid);
+		this._pointerOverlappingObjIdsSorted = Array.from(this._pointerOverlappingObjIds);
+		this._pointerOverlappingObjIdsSorted.sort(this.getDepthSorter());
 	}
 
 	unregisterHeldObj(obj) {
 		obj._held = false;
 		this._heldObjIds.delete(obj._uuid);
-		// removeItem(this.heldObjIdsSorted, obj._uuid);
 		this._heldObjIdsSorted = Array.from(this._heldObjIds);
 		this._heldObjIdsSorted.sort(this.getDepthSorter());
 	}
@@ -274,14 +292,12 @@ export default class NViewport {
 	unregisterDraggedObj(obj) {
 		obj._dragged = false;
 		this._draggedObjIds.delete(obj._uuid);
-		// removeItem(this.heldObjIdsSorted, obj._uuid);
 		this._draggedObjIdsSorted = Array.from(this._draggedObjIds);
 		this._draggedObjIdsSorted.sort(this.getDepthSorter());
 	}
 
 	unregisterAllDrawnObjs() {
 		this._drawnObjIds.clear();
-		// this.drawnObjIdsSorted = [];
 		this.registerDrawnObj(this._background);
 	}
 
@@ -291,10 +307,16 @@ export default class NViewport {
 		this.registerMouseListeningObj(this._background);
 	}
 
-	unregisterAllMouseOverObjs() {
-		this._mouseOverObjIds.forEach(id => this._allObjs[id]._mouseOverlapping = false);
-		this._mouseOverObjIds.clear();
-		this._mouseOverObjIdsSorted = [];
+	unregisterAllPointerAwareObjs() {
+		this._pointerAwareObjIds.forEach(id => this._allObjs[id]._pointerAware = false);
+		this._pointerAwareObjIds.clear();
+		this._pointerAwareObjIdsSorted = [];
+	}
+
+	unregisterAllPointerOverlappingObjs() {
+		this._pointerOverlappingObjIds.forEach(id => this._allObjs[id]._pointerOverlapping = false);
+		this._pointerOverlappingObjIds.clear();
+		this._pointerOverlappingObjIdsSorted = [];
 	}
 
 	unregisterAllHeldObjs() {
@@ -318,12 +340,13 @@ export default class NViewport {
 		delete this._allObjs[obj._uuid];
 		this.unregisterDrawnObj(obj);
 		this.unregisterMouseListeningObj(obj);
-		this.unregisterMouseOverObj(obj);
+		this.unregisterPointerAwareObj(obj);
+		this.unregisterPointerOverlappingObj(obj);
 		this.unregisterHeldObj(obj);
 		this.unregisterDraggedObj(obj);
 		this.queueRedraw();
 		// update mouse logic in case an object is removed that was preventing a lower object from being touched
-		this._mousePosUpdated();
+		this._pointerPosUpdated();
 	}
 
 	forgetAll() {
@@ -335,7 +358,7 @@ export default class NViewport {
 	// tickMultiplier = integer equiv of deltaTime
 	// overflow = accidental ms delay since last tick
 	onTick(deltaT, tickMultiplier, overflow) {
-		// console.log(ticks + " : " + deltaTime + " : " + overflow);
+		// TODO add event listeners here
 	}
 
 	_setupLoop() {
@@ -441,14 +464,27 @@ export default class NViewport {
 		self.resizeObserver.observe(this.container);
 	}
 
-	_mousePosUpdated(e) {
-		const newMousePos = this.pageToViewSpace(this._mouseElemPos);
-		this._mouseDelta = newMousePos.subtractp(this._mousePos);
-		this._preOnMouseMove(e);
+	_pointerPosUpdated(e) {
+		let newPointerElemPos = this._pointerElemPos;
+		if (e) {
+			newPointerElemPos = new NPoint(
+				e.pageX - this.container.offsetLeft,
+				e.pageY - this.container.offsetTop
+			);
+		}
+		this._pointerElemDelta = newPointerElemPos.subtractp(this._pointerElemPos);
+		this._pointerElemPos = newPointerElemPos;
+		const newPointerPos = this.pageToViewSpace(this._pointerElemPos);
+		this._pointerDragDelta = newPointerPos.subtractp(this._mouseDownPos);
+		this._pointerDelta = newPointerPos.subtractp(this._pointerPos);
+		this._pointerPos = newPointerPos;
+		this._preOnPointerMove(e);
+
+		// dragging
 		if (this._mouseDown) {
-			this._mouseDragMaxDelta = Math.max(this._mouseDragMaxDelta, this._mouseDownPos.subtractp(newMousePos).length());
-			this._mouseDragDistance += this._mouseDelta.length();
-			if (this._mouseDragDistance >= this.nonDragThreshold) {
+			this._pointerDragMaxDelta = Math.max(this._pointerDragMaxDelta, this._mouseDownPos.subtractp(newPointerPos).length());
+			this._pointerDragDistance += this._pointerDelta.length();
+			if (this._pointerDragDistance >= this.nonDragThreshold) {
 				for (const uuid of this._heldObjIdsSorted) {
 					const obj = this._allObjs[uuid];
 					if (!this._draggedObjIds.has(uuid)) {
@@ -459,43 +495,87 @@ export default class NViewport {
 				}
 			}
 		}
-		this._mousePos = newMousePos;
 
-		const currentMousedOverObjIds = new Set();
+		// determine pointer awareness
+		const prevPointerAwareObjIds = new Set(this._pointerAwareObjIds);
+		const currentPointerAwareObjIds = new Set();
 		for (const uuid of this._mouseListeningObjIdsSorted) {
 			const obj = this._allObjs[uuid];
-			if (obj._mouseListening) {
-				if (obj.isOverlapping(this._mousePos)) {
-					currentMousedOverObjIds.add(uuid);
-					if (obj.isMouseBlockingOverlap()) {
-						break;
-					}
+			if (obj._mouseListening && obj.intersects(this._pointerPos)) {
+				currentPointerAwareObjIds.add(uuid);
+				// is newly aware
+				if (!prevPointerAwareObjIds.has(uuid)) {
+					console.log("aware new " + obj._uuid);
+					this.registerPointerAwareObj(obj);
+					obj.onPointerAwarenessStarted(e);
+				}
+				if (obj.blocksPointerEvents()) {
+					break;
 				}
 			}
 		}
 
-		const prevMousedOverObjIds = new Set(this._mouseOverObjIds);
-		// existing & new moused over objs
-		if (this._mouseWithin) {
-			for (const uuid of currentMousedOverObjIds) {
-				if (!prevMousedOverObjIds.has(uuid)) {
-					const obj = this._allObjs[uuid];
-					this.registerMouseOverObj(obj);
-					obj.onMouseEntered(e);
+		// no longer aware objects
+		for (const uuid of prevPointerAwareObjIds) {
+			const obj = this._allObjs[uuid];
+			if (!currentPointerAwareObjIds.has(uuid)) {
+				this.unregisterPointerAwareObj(obj);
+				obj.onPointerAwarenessEnded(e);
+				console.log("aware end " + obj._uuid);
+			}
+		}
+
+		// determine overlaps (similar to, but not the same as awareness)
+		const prevPointerOverlappingObjIds = new Set(this._pointerOverlappingObjIds);
+		const currentPointerOverlappingObjIds = new Set();
+
+		let newHighestOverlapBlockingObjId = null;
+		for(const uuid of this._pointerAwareObjIdsSorted){
+			const obj = this._allObjs[uuid];
+			currentPointerOverlappingObjIds.add(uuid);
+
+			// stop at lowest blocking object
+			if(uuid === this._highestOverlapBlockingObjId){
+				// ensure that this.lowestOverlapBlockingObjId will be set to what it was before
+				newHighestOverlapBlockingObjId = uuid;
+				break;
+			}
+
+			// newly overlapping
+			if(!prevPointerOverlappingObjIds.has(uuid)){
+				const result = {
+					blocking: true
+				}
+				//TODO add new overlaps to their own lists and call the overlap start event later, so that overlapEnd events of old objects happen before the start events of new ones
+				this.registerPointerOverlappingObj(obj);
+				obj.onPointerOverlapStarted(e, result);
+				console.log("overlap new " + obj._uuid);
+
+				if(result.blocking){
+					// call here because the break prevents the later call
+					obj.onPointerOverlapMovement(e);
+					// because this was reached first, it is now the highest blocking
+					newHighestOverlapBlockingObjId = uuid;
+					break;
 				}
 			}
+			
+			// call down here because it must happen after obj.onPointerOverlapStarted
+			obj.onPointerOverlapMovement(e);
 		}
+		this._highestOverlapBlockingObjId = newHighestOverlapBlockingObjId;
 
-		// no longer moused over objs
-		for (const uuid of prevMousedOverObjIds) {
-			if (!currentMousedOverObjIds.has(uuid)) {
-				const obj = this._allObjs[uuid];
-				this.unregisterMouseOverObj(obj);
-				obj.onMouseExited(e);
+		for(const uuid of prevPointerOverlappingObjIds){
+			const obj = this._allObjs[uuid];
+			if (!currentPointerOverlappingObjIds.has(uuid)) {
+				this.unregisterPointerOverlappingObj(obj);
+				obj.onPointerOverlapEnded(e);
+				console.log("overlap end " + obj._uuid);
 			}
 		}
 
-		this._postOnMouseMove(e);
+		// no longer overlapping
+		this._postOnPointerMove(e);
 	}
 
 	keyPressed(code) {}
@@ -517,7 +597,7 @@ export default class NViewport {
 					self._altDown = true;
 					break;
 				default:
-					if (self._mouseWithin) {
+					if (self._pointerWithin) {
 						self._downKeys.add(keyCode);
 						self.keyPressed(keyCode);
 					}
@@ -560,8 +640,8 @@ export default class NViewport {
 				case "center":
 					zoomCenter = this._vpCenter;
 					break;
-				case "mouse":
-					zoomCenter = this._mouseElemPos;
+				case "pointer":
+					zoomCenter = this._pointerElemPos;
 					break;
 			}
 		}
@@ -571,7 +651,7 @@ export default class NViewport {
 			.divide1(prevZoomFactor).multiply1(this._zoomFactor - prevZoomFactor)
 		);
 		if (!quiet) {
-			this._mousePosUpdated();
+			this._pointerPosUpdated();
 		}
 		this.queueRedraw();
 	}
@@ -605,7 +685,7 @@ export default class NViewport {
 	setPanCenter(newCenter, quiet = false) {
 		this._panCenter = newCenter;
 		if (!quiet) {
-			this._mousePosUpdated();
+			this._pointerPosUpdated();
 		}
 		this.queueRedraw();
 	}
@@ -621,19 +701,22 @@ export default class NViewport {
 	_setupMouseListeners() {
 		const self = this;
 		this.container.addEventListener("pointerenter", function (e) {
-			self._mouseWithin = true;
+			self._pointerWithin = true;
 		});
 
 		this.container.addEventListener("pointerleave", function (e) {
-			self._mouseWithin = false;
+			self._pointerWithin = false;
 		});
 
 		this.container.addEventListener("wheel", function (e) {
 			self._preOnMouseWheel(e);
-			for (const uuid of self._mouseOverObjIdsSorted) {
+			for (const uuid of self._pointerAwareObjIdsSorted) {
 				const obj = self._allObjs[uuid];
-				obj.onWheel(e);
-				if (obj.isBlockingWheel(self)) {
+				const result = {
+					blocking: false
+				};
+				obj.onWheel(e, result);
+				if (result.blocking) {
 					break;
 				}
 			}
@@ -643,15 +726,17 @@ export default class NViewport {
 
 		this.container.addEventListener("pointerdown", function (e) {
 			self.queueRedraw();
-			self._mouseElemDownPos = self._mouseElemPos;
-			self._mouseDownPos = self.pageToViewSpace(self._mouseElemPos);
+			self._mouseDownPos = self.pageToViewSpace(self._pointerElemPos);
 			self._mouseDown = true;
 			self._preOnMouseDown(e);
-			for (const uuid of self._mouseOverObjIdsSorted) {
+			for (const uuid of self._pointerAwareObjIdsSorted) {
 				const obj = self._allObjs[uuid];
 				self.registerHeldObj(obj);
-				obj.onPressed(e);
-				if (obj.isMouseBlockingPress(self)) {
+				const result = {
+					blocking: true
+				};
+				obj.onPressed(e, result);
+				if (result.blocking) {
 					break;
 				}
 			}
@@ -663,16 +748,19 @@ export default class NViewport {
 			self.queueRedraw();
 			self._preOnMouseUp(e);
 			self._mouseDown = false;
-			for (const uuid of self._mouseOverObjIdsSorted) {
+			for (const uuid of self._pointerAwareObjIdsSorted) {
 				const obj = self._allObjs[uuid];
-				obj.onMouseUp(e);
-				if (obj.isMouseBlockingPress()) {
+				const result = {
+					blocking: true
+				};
+				obj.onMouseUp(e, result);
+				if (result.blocking) {
 					break;
 				}
 			}
 
 
-			const isDrag = self._mouseDragDistance >= self.nonDragThreshold;
+			const isDrag = self._pointerDragDistance >= self.nonDragThreshold;
 			if (!isDrag) {
 				self._preOnMouseClick(e);
 			}
@@ -685,8 +773,8 @@ export default class NViewport {
 					obj.onClicked(e);
 				}
 			}
-			self._mouseDragDistance = 0;
-			self._mouseDragMaxDelta = 0;
+			self._pointerDragDistance = 0;
+			self._pointerDragMaxDelta = 0;
 			self.unregisterAllHeldObjs();
 			self.unregisterAllDraggedObjs();
 			self._postOnMouseUp(e);
@@ -698,14 +786,7 @@ export default class NViewport {
 
 		// this.container.style.touchAction = "none";
 		document.addEventListener("pointermove", function (e) {
-			const newMouseElemPos = new NPoint(
-				e.pageX - self.container.offsetLeft,
-				e.pageY - self.container.offsetTop
-			);
-
-			self._mouseElemDelta = newMouseElemPos.subtractp(self._mouseElemPos);
-			self._mouseElemPos = newMouseElemPos;
-			self._mousePosUpdated(e);
+			self._pointerPosUpdated(e);
 			e.preventDefault();
 		});
 	}

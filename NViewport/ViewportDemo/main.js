@@ -21,7 +21,7 @@ function setupElements() {
     });
     viewport._background.color = "#1a1a1a"
     viewport.setup(document.getElementById("rootDiv"));
-    viewport.setZoomFactor(0.25);
+    viewport.setZoomFactor(1);
 }
 
 function main() {

@@ -17,15 +17,7 @@ export default class VPBackground extends VPObject {
         ctx.setTransform(currentTransform);
     }
 
-    isOverlapping(point) {
-        return true;
-    }
-
-    isMouseBlockingOverlap() {
-        return true;
-    }
-
-    isMouseBlockingPress() {
+    intersects(point) {
         return true;
     }
 
@@ -39,7 +31,7 @@ export default class VPBackground extends VPObject {
     onDragged(pointerMoveEvent) {
         super.onDragged(pointerMoveEvent);
         if (this._vp.pannable) {
-            this._vp.setPanCenter(this._vp._panCenter.addp(this._vp._mouseElemDelta), true);
+            this._vp.setPanCenter(this._vp._panCenter.addp(this._vp._pointerElemDelta), true);
         }
     }
 

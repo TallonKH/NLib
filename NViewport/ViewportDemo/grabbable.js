@@ -20,7 +20,7 @@ export default class GrabObj extends VPObject {
 
     draw(ctx) {
         ctx.fillStyle = this.color.toHex();
-        if (this._held || (this._mouseOverlapping && !this._vp.mouseDown)) {
+        if (this._held || (this._pointerOverlapping && !this._vp.mouseDown)) {
             ctx.lineWidth = 6;
             ctx.strokeStyle = "#ec5";
             this.strokeCircle(ctx);
@@ -28,12 +28,17 @@ export default class GrabObj extends VPObject {
         this.fillCircle(ctx);
     }
 
-    isMouseBlockingOverlap() {
+    onPointerOverlapStarted(pointerMoveEvent) {
+        super.onPointerOverlapStarted(pointerMoveEvent);
+        this.suggestCursor("pointer");
+        this._vp.queueRedraw();
         return true;
     }
 
-    isMouseBlockingPress() {
-        return true;
+    onPointerOverlapEnded(pointerMoveEvent) {
+        super.onPointerOverlapEnded(pointerMoveEvent);
+        this.unsuggestCursor("pointer");
+        this._vp.queueRedraw();
     }
 
     onDragStarted(pointerMoveEvent) {
@@ -45,7 +50,7 @@ export default class GrabObj extends VPObject {
 
     onDragged(pointerMoveEvent) {
         super.onDragged(pointerMoveEvent);
-        this._position = this.dragInitialPosition.addp(this._vp._mousePos.subtractp(this._vp._mouseDownPos));
+        this._position = this.dragInitialPosition.addp(this._vp._pointerDragDelta);
         this._vp.queueRedraw();
     }
 
@@ -53,24 +58,5 @@ export default class GrabObj extends VPObject {
         super.onDragEnded(pointerUpEvent);
         this.unsuggestCursor("grabbing");
         this._zSubOrder = 0;
-    }
-
-    onMouseEntered(pointerMoveEvent) {
-        super.onMouseEntered();
-        this.suggestCursor("pointer");
-        this._vp.queueRedraw();
-    }
-
-    onMouseExited() {
-        super.onMouseExited();
-        this.unsuggestCursor("pointer");
-        this._vp.queueRedraw();
-    }
-
-    onClicked() {
-        super.onClicked();
-        if (this._vp.shiftDown) {
-
-        }
     }
 }
