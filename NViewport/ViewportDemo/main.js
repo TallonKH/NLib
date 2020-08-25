@@ -27,7 +27,7 @@ function setupElements() {
 function main() {
     const grabbables = [];
     let height = -100;
-    const count = 100;
+    const count = 0.5;
     for(const space of ["RGB", "HSL", "Lab"]){
         const color1 = NColor.fromHex("#ff4747").convertTo(space);
         const color2 = NColor.fromHex("#4769ff").convertTo(space);

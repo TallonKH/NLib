@@ -29,24 +29,35 @@ export default class VPBackground extends VPObject {
         return true;
     }
 
-    onDragStarted() {
-        super.onDragStarted();
+    onDragStarted(pointerMoveEvent) {
+        super.onDragStarted(pointerMoveEvent);
         if (this._vp.pannable) {
             this.suggestCursor("move");
         }
     }
 
-    onDragged() {
-        super.onDragged();
+    onDragged(pointerMoveEvent) {
+        super.onDragged(pointerMoveEvent);
         if (this._vp.pannable) {
             this._vp.setPanCenter(this._vp._panCenter.addp(this._vp._mouseElemDelta), true);
         }
     }
 
-    onDragEnded() {
-        super.onDragEnded();
+    onDragEnded(pointerUpEvent) {
+        super.onDragEnded(pointerUpEvent);
         if (this._vp.pannable) {
             this.unsuggestCursor("move");
+        }
+    }
+
+    onWheel(wheelEvent){
+        super.onWheel(wheelEvent);
+        if(wheelEvent.ctrlKey){
+            this._vp.offsetZoomCounter(-wheelEvent.deltaY);
+        }else{
+            if (this._vp.pannable) {
+                this._vp.offsetPanCenter(wheelEvent.deltaX, wheelEvent.deltaY);
+            }
         }
     }
 }

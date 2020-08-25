@@ -12,7 +12,7 @@ export default class GrabObj extends VPObject {
         this.color = NColor.fromHex(this.colorHex);
     }
 
-    setColor(color){
+    setColor(color) {
         this.color = color;
         this.colorHex = color.toHex();
         this._vp.queueRedraw();
@@ -36,31 +36,31 @@ export default class GrabObj extends VPObject {
         return true;
     }
 
-    onDragStarted() {
-        super.onDragStarted();
+    onDragStarted(pointerMoveEvent) {
+        super.onDragStarted(pointerMoveEvent);
         this.suggestCursor("grabbing");
         this.dragInitialPosition = this._position;
         this._zSubOrder = 1;
     }
-    
-    onDragged() {
-        super.onDragged();
+
+    onDragged(pointerMoveEvent) {
+        super.onDragged(pointerMoveEvent);
         this._position = this.dragInitialPosition.addp(this._vp._mousePos.subtractp(this._vp._mouseDownPos));
         this._vp.queueRedraw();
     }
-    
-    onDragEnded() {
-        super.onDragEnded();
+
+    onDragEnded(pointerUpEvent) {
+        super.onDragEnded(pointerUpEvent);
         this.unsuggestCursor("grabbing");
         this._zSubOrder = 0;
     }
 
-    onMouseEntered() {
+    onMouseEntered(pointerMoveEvent) {
         super.onMouseEntered();
         this.suggestCursor("pointer");
         this._vp.queueRedraw();
     }
-    
+
     onMouseExited() {
         super.onMouseExited();
         this.unsuggestCursor("pointer");

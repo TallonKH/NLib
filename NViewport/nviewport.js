@@ -69,6 +69,7 @@ export default class NViewport {
 		this._drawnObjIds = new Set();
 		this._mouseListeningObjIds = new Set();
 		this._mouseOverObjIds = new Set();
+		this._mouseOverObjIds = new Set();
 		/** objects that the mouse is pressed down on */
 		this._heldObjIds = new Set();
 		/** objects that the mouse is pressed down on and moved sufficiently */
@@ -120,63 +121,63 @@ export default class NViewport {
 		this.queueRedraw();
 	}
 
-	_preOnMouseDown() {
+	_preOnMouseDown(pointerDownEvent) {
 		if (this._preMouseDownListeners) {
-			Object.values(this._preMouseDownListeners).forEach(f => f(this));
+			Object.values(this._preMouseDownListeners).forEach(f => f(this, pointerDownEvent));
 		}
 	}
 
-	_preOnMouseUp() {
+	_preOnMouseUp(pointerUpEvent) {
 		if (this._preMouseUpListeners) {
-			Object.values(this._preMouseUpListeners).forEach(f => f(this));
+			Object.values(this._preMouseUpListeners).forEach(f => f(this, pointerUpEvent));
 		}
 	}
 
-	_preOnMouseClick() {
+	_preOnMouseClick(pointerUpEvent) {
 		if (this._preMouseClickListeners) {
-			Object.values(this._preMouseClickListeners).forEach(f => f(this));
+			Object.values(this._preMouseClickListeners).forEach(f => f(this, pointerUpEvent));
 		}
 	}
 
-	_preOnMouseMove() {
+	_preOnMouseMove(pointerMoveEvent) {
 		if (this._preMouseMoveListeners) {
-			Object.values(this._preMouseMoveListeners).forEach(f => f(this));
+			Object.values(this._preMouseMoveListeners).forEach(f => f(this, pointerMoveEvent));
 		}
 	}
 
-	_preOnMouseWheel(e) {
+	_preOnMouseWheel(wheelEvent) {
 		if (this._preMouseWheelListeners) {
-			Object.values(this._preMouseWheelListeners).forEach(f => f(this, e));
+			Object.values(this._preMouseWheelListeners).forEach(f => f(this, wheelEvent));
 		}
 	}
 
-	_postOnMouseDown() {
+	_postOnMouseDown(pointerDownEvent) {
 		if (this._postMouseDownListeners) {
-			Object.values(this._postMouseDownListeners).forEach(f => f(this));
+			Object.values(this._postMouseDownListeners).forEach(f => f(this, pointerDownEvent));
 		}
 	}
 
-	_postOnMouseUp() {
+	_postOnMouseUp(pointerUpEvent) {
 		if (this._postMouseUpListeners) {
-			Object.values(this._postMouseUpListeners).forEach(f => f(this));
+			Object.values(this._postMouseUpListeners).forEach(f => f(this, pointerUpEvent));
 		}
 	}
 
-	_postOnMouseClick() {
+	_postOnMouseClick(pointerUpEvent) {
 		if (this._postMouseClickListeners) {
-			Object.values(this._postMouseClickListeners).forEach(f => f(this));
+			Object.values(this._postMouseClickListeners).forEach(f => f(this, pointerUpEvent));
 		}
 	}
 
-	_postOnMouseMove() {
+	_postOnMouseMove(pointerMoveEvent) {
 		if (this._postMouseMoveListeners) {
-			Object.values(this._postMouseMoveListeners).forEach(f => f(this));
+			Object.values(this._postMouseMoveListeners).forEach(f => f(this, pointerMoveEvent));
 		}
 	}
 
-	_postOnMouseWheel(e) {
+	_postOnMouseWheel(wheelEvent) {
 		if (this._postMouseWheelListeners) {
-			Object.values(this._postMouseWheelListeners).forEach(f => f(this, e));
+			Object.values(this._postMouseWheelListeners).forEach(f => f(this, wheelEvent));
 		}
 	}
 
@@ -187,7 +188,7 @@ export default class NViewport {
 			const b = allObjs[bid];
 			return (b.zOrder - a.zOrder) ||
 				(b.zSubOrder - a.zSubOrder) ||
-				(b.drawRegisterNum - a.drawRegisterNum);
+				(b._drawRegisterNum - a._drawRegisterNum);
 		}
 	}
 
@@ -196,84 +197,84 @@ export default class NViewport {
 	}
 
 	registerObj(obj) {
-		this._allObjs[obj.uuid] = obj;
-		if (obj.drawable) {
+		this._allObjs[obj._uuid] = obj;
+		if (obj._drawable) {
 			this.registerDrawnObj(obj);
 		}
-		if (obj.mouseListening) {
+		if (obj._mouseListening) {
 			this.registerMouseListeningObj(obj);
 		}
 		this.queueRedraw();
 	}
 
 	registerDrawnObj(obj) {
-		obj.drawRegisterNum = this._drawRegisterCounter++;
-		this._drawnObjIds.add(obj.uuid);
+		obj._drawRegisterNum = this._drawRegisterCounter++;
+		this._drawnObjIds.add(obj._uuid);
 		// this.drawnObjIdsSorted = Array.from(this.drawnObjIds);
 		// this.drawnObjIdsSorted.sort(this.getReversedDepthSorter());
 	}
 
 	registerMouseListeningObj(obj) {
-		this._mouseListeningObjIds.add(obj.uuid);
+		this._mouseListeningObjIds.add(obj._uuid);
 		this._mouseListeningObjIdsSorted = Array.from(this._mouseListeningObjIds);
 		this._mouseListeningObjIdsSorted.sort(this.getDepthSorter());
 	}
 
 	registerMouseOverObj(obj) {
-		obj.mouseOverlapping = true;
-		this._mouseOverObjIds.add(obj.uuid);
+		obj._mouseOverlapping = true;
+		this._mouseOverObjIds.add(obj._uuid);
 		this._mouseOverObjIdsSorted = Array.from(this._mouseOverObjIds);
 		this._mouseOverObjIdsSorted.sort(this.getDepthSorter());
 	}
 
 	registerHeldObj(obj) {
-		obj.held = true;
-		this._heldObjIds.add(obj.uuid);
+		obj._held = true;
+		this._heldObjIds.add(obj._uuid);
 		this._heldObjIdsSorted = Array.from(this._heldObjIds);
 		this._heldObjIdsSorted.sort(this.getDepthSorter());
 	}
 
 	registerDraggedObj(obj) {
-		obj.dragged = true;
-		this._draggedObjIds.add(obj.uuid);
+		obj._dragged = true;
+		this._draggedObjIds.add(obj._uuid);
 		this._draggedObjIdsSorted = Array.from(this._draggedObjIds);
 		this._draggedObjIdsSorted.sort(this.getDepthSorter());
 	}
 
 	unregisterDrawnObj(obj) {
-		this._drawnObjIds.delete(obj.uuid);
-		// removeItem(this.drawnObjIdsSorted, obj.uuid);
+		this._drawnObjIds.delete(obj._uuid);
+		// removeItem(this.drawnObjIdsSorted, obj._uuid);
 		// this.drawnObjIdsSorted = Array.from(this.drawnObjIds);
 		// this.drawnObjIdsSorted.sort(this.getReversedDepthSorter());
 	}
 
 	unregisterMouseListeningObj(obj) {
-		this._mouseListeningObjIds.delete(obj.uuid);
-		// removeItem(this.mouseListeningObjIdsSorted, obj.uuid);
+		this._mouseListeningObjIds.delete(obj._uuid);
+		// removeItem(this.mouseListeningObjIdsSorted, obj._uuid);
 		this._mouseListeningObjIdsSorted = Array.from(this._mouseListeningObjIds);
 		this._mouseListeningObjIdsSorted.sort(this.getDepthSorter());
 	}
 
 	unregisterMouseOverObj(obj) {
-		obj.mouseOverlapping = false;
-		this._mouseOverObjIds.delete(obj.uuid);
-		// removeItem(this.mouseOverObjIdsSorted, obj.uuid);
+		obj._mouseOverlapping = false;
+		this._mouseOverObjIds.delete(obj._uuid);
+		// removeItem(this.mouseOverObjIdsSorted, obj._uuid);
 		this._mouseOverObjIdsSorted = Array.from(this._mouseOverObjIds);
 		this._mouseOverObjIdsSorted.sort(this.getDepthSorter());
 	}
 
 	unregisterHeldObj(obj) {
-		obj.held = false;
-		this._heldObjIds.delete(obj.uuid);
-		// removeItem(this.heldObjIdsSorted, obj.uuid);
+		obj._held = false;
+		this._heldObjIds.delete(obj._uuid);
+		// removeItem(this.heldObjIdsSorted, obj._uuid);
 		this._heldObjIdsSorted = Array.from(this._heldObjIds);
 		this._heldObjIdsSorted.sort(this.getDepthSorter());
 	}
 
 	unregisterDraggedObj(obj) {
-		obj.dragged = false;
-		this._draggedObjIds.delete(obj.uuid);
-		// removeItem(this.heldObjIdsSorted, obj.uuid);
+		obj._dragged = false;
+		this._draggedObjIds.delete(obj._uuid);
+		// removeItem(this.heldObjIdsSorted, obj._uuid);
 		this._draggedObjIdsSorted = Array.from(this._draggedObjIds);
 		this._draggedObjIdsSorted.sort(this.getDepthSorter());
 	}
@@ -291,19 +292,19 @@ export default class NViewport {
 	}
 
 	unregisterAllMouseOverObjs() {
-		this._mouseOverObjIds.forEach(id => this._allObjs[id].mouseOverlapping = false);
+		this._mouseOverObjIds.forEach(id => this._allObjs[id]._mouseOverlapping = false);
 		this._mouseOverObjIds.clear();
 		this._mouseOverObjIdsSorted = [];
 	}
 
 	unregisterAllHeldObjs() {
-		this._heldObjIds.forEach(id => this._allObjs[id].held = false);
+		this._heldObjIds.forEach(id => this._allObjs[id]._held = false);
 		this._heldObjIds.clear();
 		this._heldObjIdsSorted = [];
 	}
 
 	unregisterAllDraggedObjs() {
-		this._draggedObjIds.forEach(id => this._allObjs[id].dragged = false);
+		this._draggedObjIds.forEach(id => this._allObjs[id]._dragged = false);
 		this._draggedObjIds.clear();
 		this._draggedObjIdsSorted = [];
 	}
@@ -314,7 +315,7 @@ export default class NViewport {
 		}
 
 		obj.onForget();
-		delete this._allObjs[obj.id];
+		delete this._allObjs[obj._uuid];
 		this.unregisterDrawnObj(obj);
 		this.unregisterMouseListeningObj(obj);
 		this.unregisterMouseOverObj(obj);
@@ -440,10 +441,10 @@ export default class NViewport {
 		self.resizeObserver.observe(this.container);
 	}
 
-	_mousePosUpdated() {
+	_mousePosUpdated(e) {
 		const newMousePos = this.pageToViewSpace(this._mouseElemPos);
 		this._mouseDelta = newMousePos.subtractp(this._mousePos);
-		this._preOnMouseMove();
+		this._preOnMouseMove(e);
 		if (this._mouseDown) {
 			this._mouseDragMaxDelta = Math.max(this._mouseDragMaxDelta, this._mouseDownPos.subtractp(newMousePos).length());
 			this._mouseDragDistance += this._mouseDelta.length();
@@ -452,9 +453,9 @@ export default class NViewport {
 					const obj = this._allObjs[uuid];
 					if (!this._draggedObjIds.has(uuid)) {
 						this.registerDraggedObj(obj);
-						obj.onDragStarted();
+						obj.onDragStarted(e);
 					}
-					obj.onDragged();
+					obj.onDragged(e);
 				}
 			}
 		}
@@ -463,7 +464,7 @@ export default class NViewport {
 		const currentMousedOverObjIds = new Set();
 		for (const uuid of this._mouseListeningObjIdsSorted) {
 			const obj = this._allObjs[uuid];
-			if (obj.mouseListening) {
+			if (obj._mouseListening) {
 				if (obj.isOverlapping(this._mousePos)) {
 					currentMousedOverObjIds.add(uuid);
 					if (obj.isMouseBlockingOverlap()) {
@@ -480,7 +481,7 @@ export default class NViewport {
 				if (!prevMousedOverObjIds.has(uuid)) {
 					const obj = this._allObjs[uuid];
 					this.registerMouseOverObj(obj);
-					obj.onMouseEntered();
+					obj.onMouseEntered(e);
 				}
 			}
 		}
@@ -490,11 +491,11 @@ export default class NViewport {
 			if (!currentMousedOverObjIds.has(uuid)) {
 				const obj = this._allObjs[uuid];
 				this.unregisterMouseOverObj(obj);
-				obj.onMouseExited();
+				obj.onMouseExited(e);
 			}
 		}
 
-		this._postOnMouseMove();
+		this._postOnMouseMove(e);
 	}
 
 	keyPressed(code) {}
@@ -546,6 +547,14 @@ export default class NViewport {
 	}
 
 	_zoomUpdatePanCenter(prevZoomFactor, zoomCenter = null, quiet = false) {
+		if (this._minZoomFactor > this._maxZoomFactor) {
+			throw `Invalid zoom minimum and maximum! [${self._minZoomFactor}, ${self._maxZoomFactor}]`;
+		}
+
+		if (this._minZoomFactor == this._maxZoomFactor) {
+			return;
+		}
+
 		if (zoomCenter === null) {
 			switch (this._zoomCenterMode) {
 				case "center":
@@ -589,12 +598,24 @@ export default class NViewport {
 		this._zoomUpdatePanCenter(prevZoomFactor, zoomCenter, quiet);
 	}
 
+	offsetZoomCounter(delta, quiet = false) {
+		this.setZoomCounter(this._zoomCounter + (delta * this.zoomSensitivity), null, quiet);
+	}
+
 	setPanCenter(newCenter, quiet = false) {
 		this._panCenter = newCenter;
 		if (!quiet) {
 			this._mousePosUpdated();
 		}
 		this.queueRedraw();
+	}
+
+	offsetPanCenter(deltaX, deltaY, quiet = false) {
+		let centerDelta = new NPoint(deltaX, deltaY).multiply1(this.panSensitivity);
+		if (this.inversePanning) {
+			centerDelta = centerDelta.negate();
+		}
+		this.setPanCenter(this._panCenter.addp(centerDelta), quiet);
 	}
 
 	_setupMouseListeners() {
@@ -609,23 +630,15 @@ export default class NViewport {
 
 		this.container.addEventListener("wheel", function (e) {
 			self._preOnMouseWheel(e);
-
-			if (e.ctrlKey) {
-				if (self._minZoomFactor < self._maxZoomFactor) {
-					self.setZoomCounter(self._zoomCounter + (-e.deltaY * self.zoomSensitivity));
-					e.preventDefault();
-				}
-			} else {
-				if (self.pannable) {
-					let centerDelta = new NPoint(e.deltaX, e.deltaY).multiply1(self.panSensitivity);
-					if (self.inversePanning) {
-						centerDelta = centerDelta.negate();
-					}
-					self.setPanCenter(self._panCenter.addp(centerDelta));
-					e.preventDefault();
+			for (const uuid of self._mouseOverObjIdsSorted) {
+				const obj = self._allObjs[uuid];
+				obj.onWheel(e);
+				if (obj.isBlockingWheel(self)) {
+					break;
 				}
 			}
 			self._postOnMouseWheel(e);
+			e.preventDefault();
 		});
 
 		this.container.addEventListener("pointerdown", function (e) {
@@ -633,25 +646,26 @@ export default class NViewport {
 			self._mouseElemDownPos = self._mouseElemPos;
 			self._mouseDownPos = self.pageToViewSpace(self._mouseElemPos);
 			self._mouseDown = true;
-			self._preOnMouseDown();
+			self._preOnMouseDown(e);
 			for (const uuid of self._mouseOverObjIdsSorted) {
 				const obj = self._allObjs[uuid];
 				self.registerHeldObj(obj);
-				obj.onPressed(self);
+				obj.onPressed(e);
 				if (obj.isMouseBlockingPress(self)) {
 					break;
 				}
 			}
-			self._postOnMouseDown();
+			self._postOnMouseDown(e);
+			e.preventDefault();
 		});
 
 		document.addEventListener("pointerup", function (e) {
 			self.queueRedraw();
-			self._preOnMouseUp();
+			self._preOnMouseUp(e);
 			self._mouseDown = false;
 			for (const uuid of self._mouseOverObjIdsSorted) {
 				const obj = self._allObjs[uuid];
-				obj.onMouseUp();
+				obj.onMouseUp(e);
 				if (obj.isMouseBlockingPress()) {
 					break;
 				}
@@ -660,30 +674,30 @@ export default class NViewport {
 
 			const isDrag = self._mouseDragDistance >= self.nonDragThreshold;
 			if (!isDrag) {
-				self._preOnMouseClick();
+				self._preOnMouseClick(e);
 			}
 			for (const uuid of self._heldObjIdsSorted) {
 				const obj = self._allObjs[uuid];
-				obj.onUnpressed();
+				obj.onUnpressed(e);
 				if (isDrag) {
-					obj.onDragEnded();
+					obj.onDragEnded(e);
 				} else {
-					obj.onClicked();
+					obj.onClicked(e);
 				}
-			}
-			if (!isDrag) {
-				self._postOnMouseClick();
 			}
 			self._mouseDragDistance = 0;
 			self._mouseDragMaxDelta = 0;
 			self.unregisterAllHeldObjs();
 			self.unregisterAllDraggedObjs();
-			self._postOnMouseUp();
+			self._postOnMouseUp(e);
+			if (!isDrag) {
+				self._postOnMouseClick(e);
+			}
+			e.preventDefault();
 		});
 
 		// this.container.style.touchAction = "none";
 		document.addEventListener("pointermove", function (e) {
-			self._preOnMouseMove();
 			const newMouseElemPos = new NPoint(
 				e.pageX - self.container.offsetLeft,
 				e.pageY - self.container.offsetTop
@@ -691,8 +705,8 @@ export default class NViewport {
 
 			self._mouseElemDelta = newMouseElemPos.subtractp(self._mouseElemPos);
 			self._mouseElemPos = newMouseElemPos;
-			self._mousePosUpdated();
-			self._postOnMouseMove();
+			self._mousePosUpdated(e);
+			e.preventDefault();
 		});
 	}
 

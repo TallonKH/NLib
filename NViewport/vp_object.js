@@ -55,6 +55,10 @@ export default class VPObject {
         return false;
     }
 
+    isBlockingWheel() {
+        return false;
+    }
+
     isOverlapping(point) {
         return this._position.subtractp(point).lengthSquared() < Math.pow(this._size, 2);
     }
@@ -97,33 +101,36 @@ export default class VPObject {
         ctx.stroke();
     }
 
-    onMouseEntered() {}
+    onMouseEntered(pointerMoveEvent) {}
 
-    onMouseExited() {}
+    onMouseExited(pointerMoveEvent) {}
 
     /** Called when the mouse is pressed over an object */
-    onPressed() {}
+    onPressed(pointerDownEvent) {}
 
     /** 
      * Called when the mouse is released after having been pressed on the object, regarding of intermediate/final movements/position.
      * Called before both onDragEnded and onClicked
      */
-    onUnpressed() {}
+    onUnpressed(pointerUpEvent) {}
 
     /** Called when the mouse is released over an object, regardless of whether it was pressed on the object */
-    onMouseUp() {}
+    onMouseUp(pointerUpEvent) {}
 
     /** Called when the mouse is pressed on object and moved a minimum distance */
-    onDragStarted() {}
+    onDragStarted(pointerDownEvent) {}
 
     /** Called when the mouse is moved while in drag mode*/
-    onDragged() {}
+    onDragged(pointerMoveEvent) {}
 
     /** Called when the mouse is released while in drag mode */
-    onDragEnded() {}
+    onDragEnded(pointerUpEvent) {}
 
     /** Called when the mouse is pressed and released, without having moved a signiciant distance in between */
-    onClicked() {}
+    onClicked(pointerUpEvent) {}
+
+    /** Called when the mouse wheel is used while the cursor is overlapping the object */
+    onWheel(wheelEvent){}
 
     onForgotten() {
         this.unsuggestAllCursors();
