@@ -96,6 +96,7 @@ export default class NViewport {
 		this._postMouseClickListeners = {}
 		this._postPointerMoveListeners = {}
 		this._postMouseWheelListeners = {}
+		this._tickListeners = {}
 
 		// is the mouse over the viewport?
 		this._pointerWithin = false;
@@ -126,21 +127,21 @@ export default class NViewport {
 		this.queueRedraw();
 	}
 
-	_preOnMouseDown(pointerDownEvent) {
+	_preOnMouseDown(mouseClickEvent) {
 		if (this._preMouseDownListeners) {
-			Object.values(this._preMouseDownListeners).forEach(f => f(this, pointerDownEvent));
+			Object.values(this._preMouseDownListeners).forEach(f => f(this, mouseClickEvent));
 		}
 	}
 
-	_preOnMouseUp(pointerUpEvent) {
+	_preOnMouseUp(mouseClickEvent) {
 		if (this._preMouseUpListeners) {
-			Object.values(this._preMouseUpListeners).forEach(f => f(this, pointerUpEvent));
+			Object.values(this._preMouseUpListeners).forEach(f => f(this, mouseClickEvent));
 		}
 	}
 
-	_preOnMouseClick(pointerUpEvent) {
+	_preOnMouseClick(mouseClickEvent) {
 		if (this._preMouseClickListeners) {
-			Object.values(this._preMouseClickListeners).forEach(f => f(this, pointerUpEvent));
+			Object.values(this._preMouseClickListeners).forEach(f => f(this, mouseClickEvent));
 		}
 	}
 
@@ -156,21 +157,21 @@ export default class NViewport {
 		}
 	}
 
-	_postOnMouseDown(pointerDownEvent) {
+	_postOnMouseDown(mouseClickEvent) {
 		if (this._postMouseDownListeners) {
-			Object.values(this._postMouseDownListeners).forEach(f => f(this, pointerDownEvent));
+			Object.values(this._postMouseDownListeners).forEach(f => f(this, mouseClickEvent));
 		}
 	}
 
-	_postOnMouseUp(pointerUpEvent) {
+	_postOnMouseUp(mouseClickEvent) {
 		if (this._postMouseUpListeners) {
-			Object.values(this._postMouseUpListeners).forEach(f => f(this, pointerUpEvent));
+			Object.values(this._postMouseUpListeners).forEach(f => f(this, mouseClickEvent));
 		}
 	}
 
-	_postOnMouseClick(pointerUpEvent) {
+	_postOnMouseClick(mouseClickEvent) {
 		if (this._postMouseClickListeners) {
-			Object.values(this._postMouseClickListeners).forEach(f => f(this, pointerUpEvent));
+			Object.values(this._postMouseClickListeners).forEach(f => f(this, mouseClickEvent));
 		}
 	}
 
@@ -356,8 +357,10 @@ export default class NViewport {
 
 	// tickMultiplier = integer equiv of deltaTime
 	// overflow = accidental ms delay since last tick
-	onTick(deltaT, tickMultiplier, overflow) {
-		// TODO add event listeners here
+	_onTick(deltaT, tickMultiplier, overflow) {
+		if (this._tickListeners) {
+			Object.values(this._tickListeners).forEach(f => f(this, deltaT, tickMultiplier, overflow));
+		}
 	}
 
 	_setupLoop() {
@@ -387,7 +390,7 @@ export default class NViewport {
 				overflowTime = overflowRemainder;
 
 				let extraTicks = diffQuotient + overflowQuotient;
-				self.onTick(deltaTime * extraTicks / 1000 + 1, extraTicks, overflowTime);
+				self._onTick(deltaTime * extraTicks / 1000 + 1, extraTicks, overflowTime);
 				requestNext();
 				deltaTime = 0;
 			} else {
