@@ -4,7 +4,8 @@ import {
 	clamp
 } from "../nmath.js";
 import {
-	insertSorted, findSorted
+	insertSorted,
+	removeSorted
 } from "../nmisc.js";
 
 export default class NViewport {
@@ -84,8 +85,7 @@ export default class NViewport {
 		// this.drawnObjIdsSorted = []
 		this._mouseListeningObjIdsSorted = []
 		this._pointerAwareObjIdsSorted = []
-		this._wheelListeningObjIdsSorted = []
-		this._wheelOverObjIdsSorted = []
+		this._pointerOverlappingObjIdsSorted = []
 		this._heldObjIdsSorted = []
 		this._draggedObjIdsSorted = []
 
@@ -94,6 +94,7 @@ export default class NViewport {
 		this._preMouseClickListeners = {}
 		this._prePointerMoveListeners = {}
 		this._preMouselListeners = {}
+		this._preMouseWheelListeners = {}
 		this._postMouseDownListeners = {}
 		this._postMouseUpListeners = {}
 		this._postMouseClickListeners = {}
@@ -107,10 +108,20 @@ export default class NViewport {
 		this._shiftDown = false;
 		this._altDown = false;
 		this._downKeys = new Set();
-		const self = this;
-		// setTimeout(function () {
-		// 	self.recenter();
-		// }, 500);
+
+		this.depthSorter = function (aid, bid) {
+			const a = this._allObjs[aid];
+			const b = this._allObjs[bid];
+			return (b.zOrder - a.zOrder) ||
+				(b.zSubOrder - a.zSubOrder) ||
+				(b._drawRegisterNum - a._drawRegisterNum);
+		}.bind(this);
+
+		this.reverseDepthSorter = function (aid, bid) {
+			return this.depthSorter(bid, aid);
+		}.bind(this);
+
+		this._redraw = this.__redrawUnbound.bind(this);
 	}
 
 	setup(parentDiv) {
@@ -131,78 +142,43 @@ export default class NViewport {
 	}
 
 	_preOnMouseDown(mouseClickEvent) {
-		if (this._preMouseDownListeners) {
-			Object.values(this._preMouseDownListeners).forEach(f => f(this, mouseClickEvent));
-		}
+		Object.values(this._preMouseDownListeners).forEach(f => f(this, mouseClickEvent));
 	}
 
 	_preOnMouseUp(mouseClickEvent) {
-		if (this._preMouseUpListeners) {
-			Object.values(this._preMouseUpListeners).forEach(f => f(this, mouseClickEvent));
-		}
+		Object.values(this._preMouseUpListeners).forEach(f => f(this, mouseClickEvent));
 	}
 
 	_preOnMouseClick(mouseClickEvent) {
-		if (this._preMouseClickListeners) {
-			Object.values(this._preMouseClickListeners).forEach(f => f(this, mouseClickEvent));
-		}
+		Object.values(this._preMouseClickListeners).forEach(f => f(this, mouseClickEvent));
 	}
 
 	_preOnPointerMove(pointerMoveEvent) {
-		if (this._prePointerMoveListeners) {
-			Object.values(this._prePointerMoveListeners).forEach(f => f(this, pointerMoveEvent));
-		}
+		Object.values(this._prePointerMoveListeners).forEach(f => f(this, pointerMoveEvent));
 	}
 
 	_preOnMouseWheel(wheelEvent) {
-		if (this._preMouseWheelListeners) {
-			Object.values(this._preMouseWheelListeners).forEach(f => f(this, wheelEvent));
-		}
+		Object.values(this._preMouseWheelListeners).forEach(f => f(this, wheelEvent));
 	}
 
 	_postOnMouseDown(mouseClickEvent) {
-		if (this._postMouseDownListeners) {
-			Object.values(this._postMouseDownListeners).forEach(f => f(this, mouseClickEvent));
-		}
+		Object.values(this._postMouseDownListeners).forEach(f => f(this, mouseClickEvent));
 	}
 
 	_postOnMouseUp(mouseClickEvent) {
-		if (this._postMouseUpListeners) {
-			Object.values(this._postMouseUpListeners).forEach(f => f(this, mouseClickEvent));
-		}
+		Object.values(this._postMouseUpListeners).forEach(f => f(this, mouseClickEvent));
 	}
 
 	_postOnMouseClick(mouseClickEvent) {
-		if (this._postMouseClickListeners) {
-			Object.values(this._postMouseClickListeners).forEach(f => f(this, mouseClickEvent));
-		}
+		Object.values(this._postMouseClickListeners).forEach(f => f(this, mouseClickEvent));
 	}
 
 	_postOnPointerMove(pointerMoveEvent) {
-		if (this._postPointerMoveListeners) {
-			Object.values(this._postPointerMoveListeners).forEach(f => f(this, pointerMoveEvent));
-		}
+		Object.values(this._postPointerMoveListeners).forEach(f => f(this, pointerMoveEvent));
 	}
 
 	_postOnMouseWheel(wheelEvent) {
-		if (this._postMouseWheelListeners) {
-			Object.values(this._postMouseWheelListeners).forEach(f => f(this, wheelEvent));
-		}
-	}
-
-	getDepthSorter() {
-		const allObjs = this._allObjs;
-		return function (aid, bid) {
-			const a = allObjs[aid];
-			const b = allObjs[bid];
-			return (b.zOrder - a.zOrder) ||
-				(b.zSubOrder - a.zSubOrder) ||
-				(b._drawRegisterNum - a._drawRegisterNum);
-		}
-	}
-
-	getReversedDepthSorter() {
-		return (a, b) => this.getDepthSorter()(b, a);
+		Object.values(this._postMouseWheelListeners).forEach(f => f(this, wheelEvent));
 	}
 
 	registerObj(obj) {
@@ -223,36 +199,31 @@ export default class NViewport {
 
 	registerMouseListeningObj(obj) {
 		this._mouseListeningObjIds.add(obj._uuid);
-		this._mouseListeningObjIdsSorted = Array.from(this._mouseListeningObjIds);
-		this._mouseListeningObjIdsSorted.sort(this.getDepthSorter());
+		insertSorted(this._mouseListeningObjIdsSorted, obj._uuid, this.depthSorter);
 	}
 
 	registerPointerAwareObj(obj) {
 		obj._pointerAware = true;
 		this._pointerAwareObjIds.add(obj._uuid);
-		this._pointerAwareObjIdsSorted = Array.from(this._pointerAwareObjIds);
-		this._pointerAwareObjIdsSorted.sort(this.getDepthSorter());
+		insertSorted(this._pointerAwareObjIdsSorted, obj._uuid, this.depthSorter);
 	}
 
 	registerPointerOverlappingObj(obj) {
 		obj._pointerOverlapping = true;
 		this._pointerOverlappingObjIds.add(obj._uuid);
-		this._pointerOverlappingIdsSorted = Array.from(this._pointerOverlappingObjIds);
-		this._pointerOverlappingIdsSorted.sort(this.getDepthSorter());
+		insertSorted(this._pointerOverlappingObjIdsSorted, obj._uuid, this.depthSorter);
 	}
 
 	registerHeldObj(obj) {
 		obj._held = true;
 		this._heldObjIds.add(obj._uuid);
-		this._heldObjIdsSorted = Array.from(this._heldObjIds);
-		this._heldObjIdsSorted.sort(this.getDepthSorter());
+		insertSorted(this._heldObjIdsSorted, obj._uuid, this.depthSorter);
 	}
 
 	registerDraggedObj(obj) {
 		obj._dragged = true;
 		this._draggedObjIds.add(obj._uuid);
-		this._draggedObjIdsSorted = Array.from(this._draggedObjIds);
-		this._draggedObjIdsSorted.sort(this.getDepthSorter());
+		insertSorted(this._draggedObjIdsSorted, obj._uuid, this.depthSorter);
 	}
 
 	unregisterDrawnObj(obj) {
@@ -261,42 +232,31 @@ export default class NViewport {
 
 	unregisterMouseListeningObj(obj) {
 		this._mouseListeningObjIds.delete(obj._uuid);
-		this._mouseListeningObjIdsSorted = Array.from(this._mouseListeningObjIds);
-		this._mouseListeningObjIdsSorted.sort(this.getDepthSorter());
-	}
-
-	unregisterWheelListeningObj(obj) {
-		this._wheelListeningObjIds.delete(obj._uuid);
-		this._wheelListeningObjIdsSorted = Array.from(this._wheelListeningObjIds);
-		this._wheelListeningObjIdsSorted.sort(this.getDepthSorter());
+		removeSorted(this._mouseListeningObjIdsSorted, obj._uuid, this.depthSorter);
 	}
 
 	unregisterPointerAwareObj(obj) {
 		obj._pointerAware = false;
 		this._pointerAwareObjIds.delete(obj._uuid);
-		this._pointerAwareObjIdsSorted = Array.from(this._pointerAwareObjIds);
-		this._pointerAwareObjIdsSorted.sort(this.getDepthSorter());
+		removeSorted(this._pointerAwareObjIdsSorted, obj._uuid, this.depthSorter);
 	}
 
 	unregisterPointerOverlappingObj(obj) {
 		obj._pointerOverlapping = false;
 		this._pointerOverlappingObjIds.delete(obj._uuid);
-		this._pointerOverlappingObjIdsSorted = Array.from(this._pointerOverlappingObjIds);
-		this._pointerOverlappingObjIdsSorted.sort(this.getDepthSorter());
+		removeSorted(this._pointerOverlappingObjIdsSorted, obj._uuid, this.depthSorter);
 	}
 
 	unregisterHeldObj(obj) {
 		obj._held = false;
 		this._heldObjIds.delete(obj._uuid);
-		this._heldObjIdsSorted = Array.from(this._heldObjIds);
-		this._heldObjIdsSorted.sort(this.getDepthSorter());
+		removeSorted(this._heldObjIdsSorted, obj._uuid, this.depthSorter);
 	}
 
 	unregisterDraggedObj(obj) {
 		obj._dragged = false;
 		this._draggedObjIds.delete(obj._uuid);
-		this._draggedObjIdsSorted = Array.from(this._draggedObjIds);
-		this._draggedObjIdsSorted.sort(this.getDepthSorter());
+		removeSorted(this._draggedObjIdsSorted, obj._uuid, this.depthSorter);
 	}
 
 	unregisterAllDrawnObjs() {
@@ -306,32 +266,32 @@ export default class NViewport {
 
 	unregisterAllMouseListeningObjs() {
 		this._mouseListeningObjIds.clear();
-		this._mouseListeningObjIdsSorted = [];
+		this._mouseListeningObjIdsSorted.length = 0;
 		this.registerMouseListeningObj(this._background);
 	}
 
 	unregisterAllPointerAwareObjs() {
 		this._pointerAwareObjIds.forEach(id => this._allObjs[id]._pointerAware = false);
 		this._pointerAwareObjIds.clear();
-		this._pointerAwareObjIdsSorted = [];
+		this._pointerAwareObjIdsSorted.length = 0;
 	}
 
 	unregisterAllPointerOverlappingObjs() {
 		this._pointerOverlappingObjIds.forEach(id => this._allObjs[id]._pointerOverlapping = false);
 		this._pointerOverlappingObjIds.clear();
-		this._pointerOverlappingObjIdsSorted = [];
+		this._pointerOverlappingObjIdsSorted.length = 0;
 	}
 
 	unregisterAllHeldObjs() {
 		this._heldObjIds.forEach(id => this._allObjs[id]._held = false);
 		this._heldObjIds.clear();
-		this._heldObjIdsSorted = [];
+		this._heldObjIdsSorted.length = 0;
 	}
 
 	unregisterAllDraggedObjs() {
 		this._draggedObjIds.forEach(id => this._allObjs[id]._dragged = false);
 		this._draggedObjIds.clear();
-		this._draggedObjIdsSorted = [];
+		this._draggedObjIdsSorted.length = 0;
 	}
 
 	forget(obj) {
@@ -408,15 +368,16 @@ export default class NViewport {
 	queueRedraw() {
 		if (!this._redrawQueued) {
 			this._redrawQueued = true;
-			setTimeout(_ => this._redraw.call(this), 0);
+			window.requestAnimationFrame(this._redraw);
+			// setTimeout(_ => this._redraw, 0);
 		}
 	}
 
-	_redraw() {
+	__redrawUnbound() {
 		if (this._setupDone) {
 			this._redrawQueued = false;
 			const drawnObjIdsSorted = Array.from(this._drawnObjIds);
-			drawnObjIdsSorted.sort(this.getReversedDepthSorter());
+			drawnObjIdsSorted.sort(this.reverseDepthSorter);
 			this.ctx.setTransform(this._zoomFactor, 0, 0, this._zoomFactor, this._panCenter.x + this._vpCenter.x, this._panCenter.y + this._vpCenter.y);
 			for (const uuid of drawnObjIdsSorted) {
 				const obj = this._allObjs[uuid];
@@ -720,11 +681,11 @@ export default class NViewport {
 			self._preOnMouseWheel(e);
 			for (const uuid of self._pointerAwareObjIdsSorted) {
 				const obj = self._allObjs[uuid];
-				if(obj.ignoreWheelEvent(e)){
+				if (obj.ignoreWheelEvent(e)) {
 					continue;
 				}
 				obj.onWheel(e);
-				if(obj.blockWheelEvent(e)){
+				if (obj.blockWheelEvent(e)) {
 					break;
 				}
 			}

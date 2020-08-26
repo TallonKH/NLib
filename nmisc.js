@@ -2,79 +2,92 @@ export function identity(a) {
 	return a;
 }
 
+function subtract(a, b) {
+	return a - b;
+}
+
 /** true if, for every i, a[i] === b[i] */
-export function arraysSame(a, b){
-	if(a === null || b === null){
+export function arraysSame(a, b) {
+	if (a === null || b === null) {
 		return false;
 	}
 
-	if(a.length != b.length){
+	if (a.length != b.length) {
 		return false;
 	}
-	
-	for(let i=0, l=a.length; i<l; i++){
-		if(a[i] !== b[i]){
+
+	for (let i = 0, l = a.length; i < l; i++) {
+		if (a[i] !== b[i]) {
 			return false;
 		}
 	}
 	return true;
 }
 
-export function findSorted(array, item) {
+export function findSorted(array, item, compareFunc = subtract) {
 	let min = 0;
 	let max = array.length;
 	let mid;
 	let midItem;
 	while (true) {
-		mid = Math.floor(mid = (min + max) / 2);
-		// console.log(min + " : " + max + " > " + mid);
+		// (a >> 1) is faster than Math.floor(a * 0.5)
+		mid = (min + max) >> 1;
 
-		if(min >= max){
+		if (min >= max) {
 			return -1;
 		}
 
 		midItem = array[mid];
-		if(midItem == item){
+		const diff = compareFunc(midItem, item);
+
+		if (diff === 0) {
 			return mid;
 		}
 
-		if(midItem > item){
+		if (diff > 0) {
 			max = mid;
 			continue;
-		}
-
-		if(midItem < item){
+		} else {
 			min = mid + 1;
 			continue;
 		}
 	}
 }
 
-export function insertSorted(array, item) {
+export function removeSorted(array, item, compareFunc = subtract){
+	const found = findSorted(array, item, compareFunc);
+	if(found >= 0){
+		array.splice(found, 1);
+		return found;
+	}
+}
+
+export function insertSorted(array, item, compareFunc = subtract) {
 	let min = 0;
 	let max = array.length;
 	let mid;
 	let midItem;
 	while (true) {
-		mid = Math.floor(mid = (min + max) / 2);
+		// (a >> 1) is faster than Math.floor(a * 0.5)
+		mid = (min + max) >> 1;
 
-		if(min >= max){
+		if (min >= max) {
 			array.splice(max, 0, item);
 			return max;
 		}
-		
+
 		midItem = array[mid];
-		if(midItem === item){
+		const diff = compareFunc(midItem, item);
+
+		if (diff === 0) {
 			array.splice(mid, 0, item);
 			return mid;
 		}
 
-		if(midItem > item){
+		if (diff > 0) {
 			max = mid;
 			continue;
-		}
-
-		if(midItem < item){
+		} else {
 			min = mid + 1;
 			continue;
 		}
@@ -91,7 +104,8 @@ export function compose(...funcs) {
 }
 
 export function getRand(array) {
-	return array[Math.floor(Math.random() * array.length)];
+	// ~~ is a bitwise version of Math.floor
+	return array[~~(Math.random() * array.length)];
 }
 
 export function allEqual(...ls) {
@@ -109,7 +123,8 @@ export function allEqual(...ls) {
 
 
 export function popRand(array) {
-	const i = Math.floor(Math.random() * array.length);
+	// ~~ is a bitwise version of Math.floor
+	const i = ~~(Math.random() * array.length);
 	const result = array[i];
 	array.splice(i, 1);
 	return result;
