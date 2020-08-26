@@ -7,7 +7,7 @@ export default class GrabObj extends VPObject {
             "mouseListening": true,
             "position": position
         })
-        this._size = 100;
+        this._size = 25;
         this.colorHex = "#aaa"
         this.color = NColor.fromHex(this.colorHex);
     }
@@ -35,24 +35,6 @@ export default class GrabObj extends VPObject {
 
         // ignore if something else is being held
         return (this._vp._heldObjIds.size > 0) && (!this._vp._heldObjIds.has(this._uuid));
-    }
-
-    ignoreClickEvent(mouseClickEvent){
-        if (super.ignoreClickEvent(mouseClickEvent)) {
-            return true;
-        }
-
-        return this._uuid == 2;
-    }
-
-    onPressed(mouseClickEvent) {
-        super.onPressed(mouseClickEvent);
-        this.setColor(NColor.fromHex("#4455ff"));
-    }
-
-    onUnpressed(mouseClickEvent) {
-        super.onUnpressed(mouseClickEvent);
-        this.setColor(NColor.fromHex("#ff5555"));
     }
 
     onPointerOverlapStarted(pointerMoveEvent) {

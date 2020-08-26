@@ -27,13 +27,13 @@ function setupElements() {
 function main() {
     const grabbables = [];
     let height = -100;
-    const count = 0.5;
+    const count = 100;
     for(const space of ["RGB", "HSL", "Lab"]){
         const color1 = NColor.fromHex("#ff4747").convertTo(space);
         const color2 = NColor.fromHex("#4769ff").convertTo(space);
         for (let i = -count; i < count; i++) {
             const grabbable = new GrabObj(viewport, new NPoint(i*25*Math.cos(Math.abs(i) / 15), height + 400 * Math.sin(i/5)));
-            grabbable.color = NColor.lerp(color1, color2, (i+count)/(count*2)).setAlpha(0.5);
+            grabbable.color = NColor.lerp(color1, color2, (i+count)/(count*2));
             viewport.registerObj(grabbable);
         }
         height += 100;

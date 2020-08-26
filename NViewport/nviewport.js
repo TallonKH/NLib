@@ -528,7 +528,6 @@ export default class NViewport {
 			if (!currentPointerAwareObjIds.has(uuid)) {
 				this.unregisterPointerAwareObj(obj);
 				obj.onPointerAwarenessEnded(e);
-				console.log("aware end " + obj._uuid);
 			}
 		}
 
@@ -559,7 +558,6 @@ export default class NViewport {
 			if (!currentPointerOverlappingObjIds.has(uuid)) {
 				this.unregisterPointerOverlappingObj(obj);
 				obj.onPointerOverlapEnded(e);
-				console.log("overlap end " + obj._uuid);
 			}
 		}
 
@@ -567,14 +565,12 @@ export default class NViewport {
 		// do this down here because started events should happen after ended events
 		for (const obj of newlyPointerAwareObjs) {
 			obj.onPointerAwarenessStarted(e);
-			console.log("aware new " + obj._uuid);
 		}
 
 		// events for newly overlapping objs
 		// do this down here because started events should happen after ended events
 		for (const obj of newlyPointerOverlappingObjs) {
 			obj.onPointerOverlapStarted(e);
-			console.log("overlap new " + obj._uuid);
 		}
 
 		// events for overlapping movement
@@ -724,7 +720,7 @@ export default class NViewport {
 				if(obj.ignoreWheelEvent(e)){
 					continue;
 				}
-				obj.onWheel(e, result);
+				obj.onWheel(e);
 				if(obj.blockWheelEvent(e)){
 					break;
 				}

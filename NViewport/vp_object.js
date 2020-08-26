@@ -113,6 +113,17 @@ export default class VPObject {
         return false;
     }
 
+    /**
+     * Return true if this object should indiscriminately ignore all pointer-based events
+     * 
+     * The affected events are: (onPointerAwarenessStarted, onPointerAwarenessEnded),
+     * (onPointerOverlapStarted, onPointerOverlapMovement, onPointerOverlapEnded),
+     * (onPressed, onUnpressed, onMouseUp, onClicked),
+     * (onDragStarted, onDragged, onDragEnded),
+     * (onWheel)
+     * 
+     * If true, blocking will also be locked to false.
+     */
     ignoreAllPointerEvents() {
         return false;
     }
@@ -128,7 +139,12 @@ export default class VPObject {
         return true;
     }
 
-    ignoreOverlapEvent(pointerMoveEvent){
+    /**
+     * If true, will prevent (onPointerOverlapStarted, onPointerOverlapMovement, onPointerOverlapEnded).
+     * 
+     * If true, blocking will also be locked to false.
+     */
+    ignoreOverlapEvent(pointerMoveEvent) {
         return false;
     }
 
@@ -158,7 +174,7 @@ export default class VPObject {
      * 
      * It true, blocking will also be locked to false.
      */
-    ignoreClickEvent(mouseClickEvent){
+    ignoreClickEvent(mouseClickEvent) {
         return false;
     }
 
@@ -173,7 +189,12 @@ export default class VPObject {
         return false;
     }
 
-    ignoreWheelEvent(wheelEvent){
+    /**
+     * If true, will prevent onWheel.
+     * 
+     * It true, blocking will also be locked to false.
+     */
+    ignoreWheelEvent(wheelEvent) {
         return false;
     }
 
