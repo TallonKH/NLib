@@ -40,24 +40,24 @@ export default class NViewport {
 
 		this.navigable = navigable;
 		this.inversePanning = true;
-		this._panCenter = new NPoint();
-		this._vpCenter = new NPoint();
+		this._panCenter = NPoint.ZERO;
+		this._vpCenter = NPoint.ZERO;
 		this.panSensitivity = panSensitivity;
 
 		this._mouseDown = false;
 
 		/** raw mouse position (relative to viewport element) */
-		this._pointerElemPos = new NPoint();
-		this._pointerElemDelta = new NPoint();
+		this._pointerElemPos = NPoint.ZERO;
+		this._pointerElemDelta = NPoint.ZERO;
 
 		/** relative to viewport objects */
-		this._pointerPos = new NPoint();
+		this._pointerPos = NPoint.ZERO;
 		/** position where mouse was last pressed down */
-		this._mouseDownPos = new NPoint();
+		this._mouseDownPos = NPoint.ZERO;
 		/** movement of mouse between ticks */
-		this._pointerDelta = new NPoint();
+		this._pointerDelta = NPoint.ZERO;
 		/** difference between mouse-down cursor position and current */
-		this._pointerDragDelta = new NPoint();
+		this._pointerDragDelta = NPoint.ZERO;
 		/** cumulative distance that mouse has been dragged in the current press */
 		this._pointerDragDistance = 0;
 		/** farthest distance that mouse has been from its press position */
@@ -68,7 +68,7 @@ export default class NViewport {
 		};
 		this._cursorPriorities = ["none", "not-allowed", "help", "grabbing", "grab", "move", "pointer", "crosshair", "default"];
 
-		this._canvasDims = new NPoint();
+		this._canvasDims = NPoint.ZERO;
 		this.nonDragThreshold = 8;
 
 		this._allObjs = {};
@@ -140,7 +140,7 @@ export default class NViewport {
 	}
 
 	recenter() {
-		this.setPanCenter(this._vpCenter);
+		this.setPanCenter(NPoint.ZERO);
 	}
 
 	_preOnMouseDown(mouseClickEvent) {

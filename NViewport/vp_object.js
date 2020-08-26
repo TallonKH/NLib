@@ -4,7 +4,7 @@ var idCounter = 0;
 
 export default class VPObject {
     constructor(vp, {
-        position = new NPoint(),
+        position = NPoint.ZERO,
         drawable = true,
         mouseListening = false,
         zOrder = 0

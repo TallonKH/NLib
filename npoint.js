@@ -1,6 +1,8 @@
 import {clamp} from "./nmath.js";
 
 export default class NPoint {
+	static ZERO = new NPoint(0, 0);
+	
 	constructor(x = 0, y = 0) {
 		this.x = x;
 		this.y = y;
@@ -62,7 +64,7 @@ export default class NPoint {
 
 	static noperate(func, points) {
         if (points.length == 0) {
-            return new NPoint(0, 0);
+            return NPoint.ZERO;
         }
 
         return new NPoint(

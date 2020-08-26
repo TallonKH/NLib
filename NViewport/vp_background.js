@@ -21,6 +21,11 @@ export default class VPBackground extends VPObject {
         return true;
     }
 
+    onClicked(mouseClickEvent){
+        super.onClicked(mouseClickEvent);
+        this._vp.recenter();
+    }
+
     onDragStarted(pointerMoveEvent) {
         super.onDragStarted(pointerMoveEvent);
         if (this._vp.navigable) {
