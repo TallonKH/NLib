@@ -7,7 +7,7 @@ export default class GrabObj extends VPObject {
             "mouseListening": true,
             "position": position
         })
-        this._size = 25;
+        this.setSize(25);
         this.colorHex = "#aaa"
         this.color = NColor.fromHex(this.colorHex);
     }
@@ -19,7 +19,7 @@ export default class GrabObj extends VPObject {
     }
 
     draw(ctx) {
-        ctx.fillStyle = this.color.toHex();
+        ctx.fillStyle = this.colorHex;
         if (this._held || (this._pointerOverlapping && !this._vp.mouseDown)) {
             ctx.lineWidth = 6;
             ctx.strokeStyle = "#ec5";

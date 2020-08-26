@@ -39,6 +39,11 @@ export default class VPObject {
 
     }
 
+    setSize(size){
+        this._size = size;
+        this._vp.queueRedraw();
+    }
+
     suggestCursor(type) {
         this._suggestedCursors[type] = (this._suggestedCursors[type] || 0) + 1
         this._vp.suggestCursor(type);
@@ -61,13 +66,11 @@ export default class VPObject {
     }
 
     draw(ctx) {
-        ctx.fillStyle = "black";
+        ctx.fillStyle = "red";
         this.fillCircle(ctx);
     }
 
     strokeLine(ctx, posA, posB) {
-        // posA = this.vp.canvasToViewSpace(posA);
-        // posB = this.vp.canvasToViewSpace(posB);
         ctx.beginPath();
         ctx.moveTo(posA.x, posA.y);
         ctx.lineTo(posB.x, posB.y);
@@ -75,11 +78,9 @@ export default class VPObject {
     }
 
     fillCircle(ctx) {
-        // const adPos = this.vp.canvasToViewSpace(this.position);
-        const adPos = this._position;
         ctx.beginPath();
         ctx.ellipse(
-            adPos.x, adPos.y,
+            ~~this._position.x, ~~this._position.y,
             this._size, this._size,
             0,
             0, 2 * Math.PI);
@@ -87,12 +88,10 @@ export default class VPObject {
     }
 
     strokeCircle(ctx, scale = 1) {
-        const self = this;
-        const adPos = this._position;
         ctx.beginPath();
         ctx.ellipse(
-            adPos.x, adPos.y,
-            self._size * scale, self._size * scale,
+            ~~this._position.x, ~~this._position.y,
+            this._size * scale, this._size * scale,
             0,
             0, 2 * Math.PI);
         ctx.stroke();
