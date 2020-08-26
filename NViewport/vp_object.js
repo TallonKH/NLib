@@ -113,6 +113,10 @@ export default class VPObject {
         return false;
     }
 
+    ignoreAllPointerEvents() {
+        return false;
+    }
+
     /**
      * Return true if this object should block the overlap event from reaching lower objects.
      * 
@@ -124,18 +128,38 @@ export default class VPObject {
         return true;
     }
 
+    ignoreOverlapEvent(pointerMoveEvent){
+        return false;
+    }
+
     /**
      * Return true if this object should block the click event from reaching lower objects.
      * 
      * If true for the mouse down event, will block (onPressed, onDragStarted, onDragged, onDragEnded, onClicked).
      * 
-     * If true for the mouse up event, will only (onMouseUp). This is to prevent unexpected behavior,
-     * (ie: a dragged object being blocked from realizing that the mouse has been released).
+     * If true for the mouse up event, will only block (onMouseUp). 
+     * 
+     * (onDragEnded, onClicked, onUnpressed) will not be blocked. This is to prevent unexpected behavior,
+     * (ie: a dragged object not realizing that the mouse has been released).
      * 
      * Default behavior: block.
      */
     blockClickEvent(mouseClickEvent) {
         return true;
+    }
+
+    /**
+     * If true for the mouse down event, will prevent (onPressed, onDragStarted, onDragged, onDragEnded, onClicked).
+     * 
+     * If true for the mouse up event, will only prevent (onMouseUp). 
+     * 
+     * (onDragEnded, onClicked, onUnpressed) will still be carried out. This is to prevent unexpected behavior,
+     * (ie: a dragged object not realizing that the mouse has been released).
+     * 
+     * It true, blocking will also be locked to false.
+     */
+    ignoreClickEvent(mouseClickEvent){
+        return false;
     }
 
     /**
@@ -145,7 +169,11 @@ export default class VPObject {
      * 
      * Default behavior: do not block.
      */
-    blockWheelEvent(mouseClickEvent) {
+    blockWheelEvent(wheelEvent) {
+        return false;
+    }
+
+    ignoreWheelEvent(wheelEvent){
         return false;
     }
 
@@ -202,7 +230,7 @@ export default class VPObject {
      * 
      * Blocking behavior is determined by blockClickEvent.
      */
-    onPressed(pointerDownEvent) {}
+    onPressed(mouseClickEvent) {}
 
     /** 
      * Called when the mouse is released over an object, regardless of whether it was pressed on the object 

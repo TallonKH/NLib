@@ -28,6 +28,33 @@ export default class GrabObj extends VPObject {
         this.fillCircle(ctx);
     }
 
+    ignoreOverlapEvent(pointerMoveEvent) {
+        if (super.ignoreOverlapEvent(pointerMoveEvent)) {
+            return true;
+        }
+
+        // ignore if something else is being held
+        return (this._vp._heldObjIds.size > 0) && (!this._vp._heldObjIds.has(this._uuid));
+    }
+
+    ignoreClickEvent(mouseClickEvent){
+        if (super.ignoreClickEvent(mouseClickEvent)) {
+            return true;
+        }
+
+        return this._uuid == 2;
+    }
+
+    onPressed(mouseClickEvent) {
+        super.onPressed(mouseClickEvent);
+        this.setColor(NColor.fromHex("#4455ff"));
+    }
+
+    onUnpressed(mouseClickEvent) {
+        super.onUnpressed(mouseClickEvent);
+        this.setColor(NColor.fromHex("#ff5555"));
+    }
+
     onPointerOverlapStarted(pointerMoveEvent) {
         super.onPointerOverlapStarted(pointerMoveEvent);
         this.suggestCursor("pointer");

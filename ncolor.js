@@ -53,6 +53,7 @@ export default class NColor {
 
     setV1(v1) {
         return new NColor(
+            this.model,
             v1,
             this.v2,
             this.v3,
@@ -62,6 +63,7 @@ export default class NColor {
 
     setV2(v2) {
         return new NColor(
+            this.model,
             this.v1,
             v2,
             this.v3,
@@ -71,6 +73,7 @@ export default class NColor {
 
     setV3(v3) {
         return new NColor(
+            this.model,
             this.v1,
             this.v2,
             v3,
@@ -80,6 +83,7 @@ export default class NColor {
 
     setAlpha(alpha) {
         return new NColor(
+            this.model,
             this.v1,
             this.v2,
             this.v3,
@@ -89,6 +93,7 @@ export default class NColor {
 
     modifyV1(func) {
         return new NColor(
+            this.model,
             func(this.v1, this),
             this.v2,
             this.v3,
@@ -98,6 +103,7 @@ export default class NColor {
 
     modifyV2(func) {
         return new NColor(
+            this.model,
             this.v1,
             func(this.v2, this),
             this.v3,
@@ -107,6 +113,7 @@ export default class NColor {
 
     modifyV3(func) {
         return new NColor(
+            this.model,
             this.v1,
             this.v2,
             func(this.v3, this),
@@ -116,6 +123,7 @@ export default class NColor {
 
     modifyAlpha(func) {
         return new NColor(
+            this.model,
             this.v1,
             this.v2,
             this.v3,
