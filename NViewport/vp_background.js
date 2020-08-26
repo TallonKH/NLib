@@ -23,21 +23,21 @@ export default class VPBackground extends VPObject {
 
     onDragStarted(pointerMoveEvent) {
         super.onDragStarted(pointerMoveEvent);
-        if (this._vp.pannable) {
+        if (this._vp.navigable) {
             this.suggestCursor("move");
         }
     }
 
     onDragged(pointerMoveEvent) {
         super.onDragged(pointerMoveEvent);
-        if (this._vp.pannable) {
+        if (this._vp.navigable) {
             this._vp.setPanCenter(this._vp._panCenter.addp(this._vp._pointerElemDelta), true);
         }
     }
 
     onDragEnded(pointerUpEvent) {
         super.onDragEnded(pointerUpEvent);
-        if (this._vp.pannable) {
+        if (this._vp.navigable) {
             this.unsuggestCursor("move");
         }
     }
@@ -45,10 +45,10 @@ export default class VPBackground extends VPObject {
     onWheel(wheelEvent){
         super.onWheel(wheelEvent);
         if(wheelEvent.ctrlKey){
-            this._vp.offsetZoomCounter(-wheelEvent.deltaY);
+            this._vp.scrollZoomCounter(-wheelEvent.deltaY);
         }else{
-            if (this._vp.pannable) {
-                this._vp.offsetPanCenter(wheelEvent.deltaX, wheelEvent.deltaY);
+            if (this._vp.navigable) {
+                this._vp.scrollPanCenter(wheelEvent.deltaX, wheelEvent.deltaY);
             }
         }
     }

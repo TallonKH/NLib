@@ -8,14 +8,17 @@ import {
 	removeSorted
 } from "../nmisc.js";
 
+// TODO add way to limit pannable area
+// TODO fix drag threshold to use screen-space delta instead of viewport-space
+
 export default class NViewport {
 	constructor({
 		minZoomFactor = 0.25,
 		maxZoomFactor = 2,
-		pannable = true,
+		navigable = true,
 		zoomSensitivity = 1,
 		panSensitivity = 0.5,
-		zoomCenterMode = "pointer", //center, pointer, panCenter
+		zoomCenterMode = "pointer", //center, pointer
 		backgroundClass = VPBackground
 	} = {}) {
 		this._setupDone = false;
@@ -29,13 +32,13 @@ export default class NViewport {
 		this._minZoomFactor = minZoomFactor;
 		this._maxZoomFactor = maxZoomFactor;
 		this.zoomSensitivity = zoomSensitivity;
-		this._zoomCounterBase = 1.0075; // this.zoomFactor = Math.pow(this.zoomCounterBase, this.zoomCounter)
+		this._zoomCounterBase = 1.0075;
 		this._minZoomCounter = this.zoomFactorToCounter(this._minZoomFactor);
 		this._maxZoomCounter = this.zoomFactorToCounter(this._maxZoomFactor);
 		this._zoomFactor = 1;
 		this._zoomCounter = this.zoomFactorToCounter(this._zoomFactor);
 
-		this.pannable = pannable;
+		this.navigable = navigable;
 		this.inversePanning = true;
 		this._panCenter = new NPoint();
 		this._vpCenter = new NPoint();
@@ -137,8 +140,7 @@ export default class NViewport {
 	}
 
 	recenter() {
-		this._panCenter = new NPoint(this.canvas.width / 2, this.canvas.height / 2);
-		this.queueRedraw();
+		this.setPanCenter(this._vpCenter);
 	}
 
 	_preOnMouseDown(mouseClickEvent) {
@@ -647,7 +649,7 @@ export default class NViewport {
 		this._zoomUpdatePanCenter(prevZoomFactor, zoomCenter, quiet);
 	}
 
-	offsetZoomCounter(delta, quiet = false) {
+	scrollZoomCounter(delta, quiet = false) {
 		this.setZoomCounter(this._zoomCounter + (delta * this.zoomSensitivity), null, quiet);
 	}
 
@@ -659,7 +661,7 @@ export default class NViewport {
 		this.queueRedraw();
 	}
 
-	offsetPanCenter(deltaX, deltaY, quiet = false) {
+	scrollPanCenter(deltaX, deltaY, quiet = false) {
 		let centerDelta = new NPoint(deltaX, deltaY).multiply1(this.panSensitivity);
 		if (this.inversePanning) {
 			centerDelta = centerDelta.negate();

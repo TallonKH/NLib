@@ -12,16 +12,16 @@ window.onload = function () {
 
 function setupElements() {
     viewport = new NViewport({
-        "minZoomFactor": 0.25,
-        "maxZoomFactor": 4,
-        "pannable": true,
-        "zoomSensitivity": 1,
-        "panSensitivity": 0.5,
-        "zoomCenter": "mouse"
+        minZoomFactor: 0.25,
+        maxZoomFactor: 4,
+        navigable: true,
+        zoomSensitivity: 1,
+        panSensitivity: 0.5,
+        zoomCenterMode: "pointer"
     });
     viewport._background.color = "#1a1a1a"
     viewport.setup(document.getElementById("rootDiv"));
-    viewport.setZoomFactor(1);
+    viewport.setZoomFactor(0.25);
 }
 
 function main() {
