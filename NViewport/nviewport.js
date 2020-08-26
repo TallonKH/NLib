@@ -3,6 +3,9 @@ import NPoint from "../npoint.js";
 import {
 	clamp
 } from "../nmath.js";
+import {
+	insertSorted, findSorted
+} from "../nmisc.js";
 
 export default class NViewport {
 	constructor({

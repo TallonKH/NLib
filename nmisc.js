@@ -22,11 +22,12 @@ export function arraysSame(a, b){
 
 export function findSorted(array, item) {
 	let min = 0;
-	let max = array.length - 1;
+	let max = array.length;
 	let mid;
 	let midItem;
 	while (true) {
 		mid = Math.floor(mid = (min + max) / 2);
+		// console.log(min + " : " + max + " > " + mid);
 
 		if(min >= max){
 			return -1;
@@ -51,20 +52,20 @@ export function findSorted(array, item) {
 
 export function insertSorted(array, item) {
 	let min = 0;
-	let max = array.length - 1;
+	let max = array.length;
 	let mid;
 	let midItem;
 	while (true) {
 		mid = Math.floor(mid = (min + max) / 2);
 
 		if(min >= max){
-			a.splice(max, 0, item);
+			array.splice(max, 0, item);
 			return max;
 		}
 		
 		midItem = array[mid];
 		if(midItem === item){
-			a.splice(mid, 0, item);
+			array.splice(mid, 0, item);
 			return mid;
 		}
 
