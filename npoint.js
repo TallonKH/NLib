@@ -2,7 +2,7 @@ import {clamp} from "./nmath.js";
 
 export default class NPoint {
 	static ZERO = new NPoint(0, 0);
-	
+
 	constructor(x = 0, y = 0) {
 		this.x = x;
 		this.y = y;

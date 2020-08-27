@@ -8,9 +8,6 @@ import {
 	removeSorted
 } from "../nmisc.js";
 
-// TODO add way to limit pannable area
-// TODO fix drag threshold to use screen-space delta instead of viewport-space
-
 export default class NViewport {
 	constructor({
 		minZoomFactor = 0.25,
@@ -18,15 +15,21 @@ export default class NViewport {
 		navigable = true,
 		zoomSensitivity = 1,
 		panSensitivity = 0.5,
-		zoomCenterMode = "pointer", //center, pointer
+		zoomCenterMode = "pointer", //center, pointer,
+		// activeAreaDims = "INFINITE",
 		backgroundClass = VPBackground
 	} = {}) {
+		this._container;
+		this._canvas;
+		
 		this._setupDone = false;
 		this._redrawQueued = false;
 
 		this._background = new backgroundClass(this);
 
 		this.targetTickrate = 30;
+
+		// this._activeAreaDims = activeAreaDims;
 
 		this._zoomCenterMode = zoomCenterMode;
 		this._minZoomFactor = minZoomFactor;
@@ -41,7 +44,6 @@ export default class NViewport {
 		this.navigable = navigable;
 		this.inversePanning = true;
 		this._panCenter = NPoint.ZERO;
-		this._vpCenter = NPoint.ZERO;
 		this.panSensitivity = panSensitivity;
 
 		this._mouseDown = false;
@@ -68,7 +70,10 @@ export default class NViewport {
 		};
 		this._cursorPriorities = ["none", "not-allowed", "help", "grabbing", "grab", "move", "pointer", "crosshair", "default"];
 
+		// size of the literal canvas element
 		this._canvasDims = NPoint.ZERO;
+		// center of the literal canvas element
+		this._canvasCenter = NPoint.ZERO;
 		this.nonDragThreshold = 8;
 
 		this._allObjs = {};
@@ -129,8 +134,8 @@ export default class NViewport {
 
 	setup(parentDiv) {
 		if (!this._setupDone) {
-			this._makeElements();
-			parentDiv.appendChild(this.container);
+			this._setupElements();
+			parentDiv.appendChild(this._container);
 			this._setupScrollLogic();
 			this._setupMouseListeners();
 			this._setupKeyListeners();
@@ -380,7 +385,7 @@ export default class NViewport {
 			this._redrawQueued = false;
 			const drawnObjIdsSorted = Array.from(this._drawnObjIds);
 			drawnObjIdsSorted.sort(this.reverseDepthSorter);
-			this.ctx.setTransform(this._zoomFactor, 0, 0, this._zoomFactor, this._panCenter.x + this._vpCenter.x, this._panCenter.y + this._vpCenter.y);
+			this.ctx.setTransform(this._zoomFactor, 0, 0, this._zoomFactor, this._panCenter.x + this._canvasCenter.x, this._panCenter.y + this._canvasCenter.y);
 			for (const uuid of drawnObjIdsSorted) {
 				const obj = this._allObjs[uuid];
 				obj.draw(this.ctx);
@@ -391,53 +396,48 @@ export default class NViewport {
 
 	onRedraw() {}
 
-	// drawRect(x, y, w, h) {
-	// 	const pos = this.canvasToViewSpace(new NPoint(x, y));
-	// 	this.ctx.fillRect(pos.x, pos.y, w * this.zoomFactor, h * this.zoomFactor);
-	// }
+	_setupElements() {
+		this._container = document.createElement("div");
+		this._container.classList.add("vpContainer");
+		this._container.style.width = "100%";
+		this._container.style.height = "100%";
+		this._container.style.background = "transparent";
 
-	_makeElements() {
-		this.container = document.createElement("div");
-		this.container.classList.add("vpContainer");
-		this.container.style.width = "100%";
-		this.container.style.height = "100%";
-		this.container.style.background = "transparent";
-
-		this.canvas = document.createElement("canvas");
-		this.canvas.style.width = "100%";
-		this.canvas.style.height = "100%";
-		this.canvas.style.background = "transparent";
-		this.container.appendChild(this.canvas);
-		this.ctx = this.canvas.getContext("2d");
+		this._canvas = document.createElement("canvas");
+		this._canvas.style.width = "100%";
+		this._canvas.style.height = "100%";
+		this._canvas.style.background = "transparent";
+		this._container.appendChild(this._canvas);
+		this.ctx = this._canvas.getContext("2d");
 	}
 
 	pageToViewSpace(npoint) {
-		return npoint.subtractp(this._panCenter.addp(this._vpCenter)).divide1(this._zoomFactor).multiply2(1, 1);
+		return npoint.subtractp(this._panCenter.addp(this._canvasCenter)).divide1(this._zoomFactor).multiply2(1, 1);
 	}
 
 	canvasToViewSpace(npoint) {
-		return npoint.multiply2(1, 1).add2(this.canvas.width / 2, this.canvas.height / 2).multiply1(this._zoomFactor).addp(this._panCenter.addp(this._vpCenter));
+		return npoint.multiply2(1, 1).add2(this._canvas.width / 2, this._canvas.height / 2).multiply1(this._zoomFactor).addp(this._panCenter.addp(this._canvasCenter));
 	}
 
 	_setupScrollLogic() {
 		const self = this;
 		self.resizeObserver = new ResizeObserver(function (e) {
 			const resizeRect = e[0].contentRect;
-			self.canvas.width = resizeRect.width;
-			self.canvas.height = resizeRect.height;
-			self._canvasDims = new NPoint(self.canvas.width, self.canvas.height);
-			self._vpCenter = self._canvasDims.divide1(2);
+			self._canvas.width = resizeRect.width;
+			self._canvas.height = resizeRect.height;
+			self._canvasDims = new NPoint(self._canvas.width, self._canvas.height);
+			self._canvasCenter = self._canvasDims.divide1(2);
 			self.queueRedraw();
 		});
-		self.resizeObserver.observe(this.container);
+		self.resizeObserver.observe(this._container);
 	}
 
 	_pointerUpdated(e) {
 		let newPointerElemPos = this._pointerElemPos;
 		if (e) {
 			newPointerElemPos = new NPoint(
-				e.pageX - this.container.offsetLeft,
-				e.pageY - this.container.offsetTop
+				e.pageX - this._container.offsetLeft,
+				e.pageY - this._container.offsetTop
 			);
 		}
 		this._pointerElemDelta = newPointerElemPos.subtractp(this._pointerElemPos);
@@ -447,6 +447,8 @@ export default class NViewport {
 		this._pointerDelta = newPointerPos.subtractp(this._pointerPos);
 		this._pointerPos = newPointerPos;
 		this._preOnPointerMove(e);
+
+		console.log(this._pointerPos.toString());
 
 		// dragging
 		if (this._mouseDown) {
@@ -609,22 +611,17 @@ export default class NViewport {
 		if (zoomCenter === null) {
 			switch (this._zoomCenterMode) {
 				case "center":
-					zoomCenter = this._vpCenter;
+					zoomCenter = this._canvasCenter;
 					break;
 				case "pointer":
 					zoomCenter = this._pointerElemPos;
 					break;
 			}
 		}
-
-		this._panCenter = this._panCenter.subtractp(
-			zoomCenter.subtractp(this._panCenter.addp(this._vpCenter))
+		this.setPanCenter(this._panCenter.subtractp(
+			zoomCenter.subtractp(this._panCenter.addp(this._canvasCenter))
 			.divide1(prevZoomFactor).multiply1(this._zoomFactor - prevZoomFactor)
-		);
-		if (!quiet) {
-			this._pointerUpdated();
-		}
-		this.queueRedraw();
+		), quiet);
 	}
 
 	zoomFactorToCounter(factor) {
@@ -654,7 +651,8 @@ export default class NViewport {
 	}
 
 	setPanCenter(newCenter, quiet = false) {
-		this._panCenter = newCenter;
+		const mag = this._canvasDims.divide1(this._zoomFactor).subtractp(this._canvasDims.divide1(this._minZoomFactor)).negate();
+		this._panCenter = newCenter //.clamp1p(mag.multiply1(this._zoomFactor));
 		if (!quiet) {
 			this._pointerUpdated();
 		}
@@ -671,15 +669,15 @@ export default class NViewport {
 
 	_setupMouseListeners() {
 		const self = this;
-		this.container.addEventListener("pointerenter", function (e) {
+		this._container.addEventListener("pointerenter", function (e) {
 			self._pointerWithin = true;
 		});
 
-		this.container.addEventListener("pointerleave", function (e) {
+		this._container.addEventListener("pointerleave", function (e) {
 			self._pointerWithin = false;
 		});
 
-		this.container.addEventListener("wheel", function (e) {
+		this._container.addEventListener("wheel", function (e) {
 			self._preOnMouseWheel(e);
 			for (const uuid of self._pointerAwareObjIdsSorted) {
 				const obj = self._allObjs[uuid];
@@ -695,7 +693,7 @@ export default class NViewport {
 			e.preventDefault();
 		});
 
-		this.container.addEventListener("pointerdown", function (e) {
+		this._container.addEventListener("pointerdown", function (e) {
 			self.queueRedraw();
 			self._mouseDownPos = self.pageToViewSpace(self._pointerElemPos);
 			self._mouseDown = true;
@@ -777,7 +775,7 @@ export default class NViewport {
 	_refreshCursorType() {
 		for (const type of this._cursorPriorities) {
 			if (this._cursorSuggests[type]) {
-				this.canvas.style.cursor = type;
+				this._canvas.style.cursor = type;
 				break;
 			}
 		}

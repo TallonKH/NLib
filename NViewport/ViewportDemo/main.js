@@ -17,9 +17,10 @@ function setupElements() {
         navigable: true,
         zoomSensitivity: 1,
         panSensitivity: 0.5,
-        zoomCenterMode: "pointer"
+        zoomCenterMode: "pointer",
+        activeAreaDims: new NPoint(500, 300)
     });
-    viewport._background.color = "#1a1a1a"
+    viewport._background.setColor(NColor.fromHex("#1a1a1a"));
     viewport.setup(document.getElementById("rootDiv"));
     viewport.setZoomFactor(0.25);
 }
