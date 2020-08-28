@@ -1,5 +1,8 @@
 Viewport
 - add way to limit pannable area
+-- option to choose between (min fit) and (max fit)
+--- (min fit) means that the entire canvas always fits within the div
+--- (max fit) means that the canvas always fills the div (requires panning to view whole canvas)
 - fix drag threshold to use screen-space delta instead of viewport-space
 
 Libraries

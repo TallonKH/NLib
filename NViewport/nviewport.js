@@ -16,7 +16,7 @@ export default class NViewport {
 		zoomSensitivity = 1,
 		panSensitivity = 0.5,
 		zoomCenterMode = "pointer", //center, pointer,
-		// activeAreaDims = "INFINITE",
+		activeAreaDims = "INFINITE",
 		backgroundClass = VPBackground
 	} = {}) {
 		this._container;
@@ -25,11 +25,12 @@ export default class NViewport {
 		this._setupDone = false;
 		this._redrawQueued = false;
 
+		this._activeAreaDims = activeAreaDims;
+		this._activeAreaFitMode = "shrink"; // shrink, fill
+		this._activeAreaPadding = new NPoint(10, 10);
 		this._background = new backgroundClass(this);
 
-		this.targetTickrate = 30;
-
-		// this._activeAreaDims = activeAreaDims;
+		this.targetTickrate = 60;
 
 		this._zoomCenterMode = zoomCenterMode;
 		this._minZoomFactor = minZoomFactor;
@@ -385,7 +386,11 @@ export default class NViewport {
 			this._redrawQueued = false;
 			const drawnObjIdsSorted = Array.from(this._drawnObjIds);
 			drawnObjIdsSorted.sort(this.reverseDepthSorter);
-			this.ctx.setTransform(this._zoomFactor, 0, 0, this._zoomFactor, this._panCenter.x + this._canvasCenter.x, this._panCenter.y + this._canvasCenter.y);
+			// const scale = this._zoomFactor;
+			let scale = this._canvasDims.dividep(this._activeAreaDims).min();
+			const xOffset = this._panCenter.x + this._canvasCenter.x;
+			const yOffset = this._panCenter.y + this._canvasCenter.y;
+			this.ctx.setTransform(scale, 0, 0, scale, xOffset, yOffset);
 			for (const uuid of drawnObjIdsSorted) {
 				const obj = this._allObjs[uuid];
 				obj.draw(this.ctx);
@@ -412,11 +417,11 @@ export default class NViewport {
 	}
 
 	pageToViewSpace(npoint) {
-		return npoint.subtractp(this._panCenter.addp(this._canvasCenter)).divide1(this._zoomFactor).multiply2(1, 1);
+		return npoint.subtractp(this._panCenter.addp(this._canvasCenter)).divide1(this._zoomFactor);
 	}
 
 	canvasToViewSpace(npoint) {
-		return npoint.multiply2(1, 1).add2(this._canvas.width / 2, this._canvas.height / 2).multiply1(this._zoomFactor).addp(this._panCenter.addp(this._canvasCenter));
+		return npoint.add2(this._canvas.width / 2, this._canvas.height / 2).multiply1(this._zoomFactor).addp(this._panCenter.addp(this._canvasCenter));
 	}
 
 	_setupScrollLogic() {
@@ -447,8 +452,6 @@ export default class NViewport {
 		this._pointerDelta = newPointerPos.subtractp(this._pointerPos);
 		this._pointerPos = newPointerPos;
 		this._preOnPointerMove(e);
-
-		console.log(this._pointerPos.toString());
 
 		// dragging
 		if (this._mouseDown) {

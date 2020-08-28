@@ -19,17 +19,17 @@ export default class VPBackground extends VPObject {
 
     draw(ctx) {
         ctx.fillStyle = this.colorHex;
-        // let dims = this._vp._activeAreaDims;
-        // if(dims === "INFINITE"){
-        let currentTransform = ctx.getTransform();
-        ctx.resetTransform();
-        const cvs = this._vp._canvas;
-        ctx.fillRect(0, 0, cvs.width, cvs.height);
-        ctx.setTransform(currentTransform);
-        // }else{
-        //     dims = dims.divide1(this._vp._minZoomFactor);
-        //     ctx.fillRect(-dims.x, -dims.y, dims.x * 2, dims.y * 2);
-        // }
+        let dims = this._vp._activeAreaDims;
+        if(dims === "INFINITE"){
+            let currentTransform = ctx.getTransform();
+            ctx.resetTransform();
+            const cvs = this._vp._canvas;
+            ctx.fillRect(0, 0, cvs.width, cvs.height);
+            ctx.setTransform(currentTransform);
+        }else{
+            dims = dims.divide1(2);
+            ctx.fillRect(-dims.x, -dims.y, dims.x * 2, dims.y * 2);
+        }
     }
 
     intersects(point) {
