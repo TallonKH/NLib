@@ -1,6 +1,5 @@
 Viewport
-- add way to limit pannable area
-- fix drag threshold to use screen-space delta instead of viewport-space
+- fix cursor being able to move/click items beyond the bounds
 
 Libraries
 - multi lerp (nums and colors)

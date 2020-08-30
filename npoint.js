@@ -1,46 +1,48 @@
-import {clamp} from "./nmath.js";
+import {
+	clamp
+} from "./nmath.js";
 
 export default class NPoint {
 	static ZERO = new NPoint(0, 0);
 
-	constructor(x = 0, y = 0) {
+	constructor(x = 0, y = null) {
 		this.x = x;
-		this.y = y;
+		this.y = (y === null) ? x : y;
 		Object.freeze(this);
 	}
 
-	clamp1(mag){
+	clamp1(mag) {
 		return new NPoint(
-			clamp(this.x,  -mag, mag),
-			clamp(this.y,  -mag, mag)
+			clamp(this.x, -mag, mag),
+			clamp(this.y, -mag, mag)
 		);
 	}
 
-	clamp2(min, max){
+	clamp2(min, max) {
 		return new NPoint(
-			clamp(this.x,  min, max),
-			clamp(this.y,  min, max)
+			clamp(this.x, min, max),
+			clamp(this.y, min, max)
 		);
 	}
 
-	clamp4(minX, maxX, minY, maxY){
+	clamp4(minX, maxX, minY, maxY) {
 		return new NPoint(
-			clamp(this.x,  minX, maxX),
-			clamp(this.y,  minY, maxY)
+			clamp(this.x, minX, maxX),
+			clamp(this.y, minY, maxY)
 		);
 	}
 
-	clamp1p(mag){
+	clamp1p(mag) {
 		return new NPoint(
-			clamp(this.x,  -mag.x, mag.x),
-			clamp(this.y,  -mag.y, mag.y)
+			clamp(this.x, -mag.x, mag.x),
+			clamp(this.y, -mag.y, mag.y)
 		);
 	}
 
-	clamp2p(min, max){
+	clamp2p(min, max) {
 		return new NPoint(
-			clamp(this.x,  min.x, max.x),
-			clamp(this.y,  min.y, max.y)
+			clamp(this.x, min.x, max.x),
+			clamp(this.y, min.y, max.y)
 		);
 	}
 
@@ -48,30 +50,30 @@ export default class NPoint {
 		return `(${this.x.toFixed(3)}, ${this.y.toFixed(3)})`;
 	}
 
-	operate(func){
+	operate(func) {
 		return new NPoint(
 			func(this.x, this),
 			func(this.y, this)
 		)
 	}
 
-	static cooperate(func, a, b){
+	static cooperate(func, a, b) {
 		return new NPoint(
 			func(a.x, b.x, a, b),
-			func(a.y, b,y, a, b)
+			func(a.y, b, y, a, b)
 		)
 	}
 
 	static noperate(func, points) {
-        if (points.length == 0) {
-            return NPoint.ZERO;
-        }
+		if (points.length == 0) {
+			return NPoint.ZERO;
+		}
 
-        return new NPoint(
-            func(points.map(p => p.x)),
-            func(points.map(p => p.y))
-        );
-    }
+		return new NPoint(
+			func(points.map(p => p.x)),
+			func(points.map(p => p.y))
+		);
+	}
 
 	add1(other) {
 		return new NPoint(this.x + other, this.y + other);
@@ -121,7 +123,31 @@ export default class NPoint {
 		return new NPoint(this.x / other.x, this.y / other.y);
 	}
 
-	negate(){
+	min1(other) {
+		return new NPoint(Math.min(this.x, other), Math.min(this.y, other));
+	}
+
+	min2(x, y) {
+		return new NPoint(Math.min(this.x, x), Math.min(this.y, y));
+	}
+
+	minp(other) {
+		return new NPoint(Math.min(this.x, other.x), Math.min(this.y, other.y));
+	}
+
+	max1(other) {
+		return new NPoint(Math.max(this.x, other), Math.max(this.y, other));
+	}
+
+	max2(x, y) {
+		return new NPoint(Math.max(this.x, x), Math.max(this.y, y));
+	}
+
+	maxp(other) {
+		return new NPoint(Math.max(this.x, other.x), Math.max(this.y, other.y));
+	}
+
+	negate() {
 		return new NPoint(-this.x, -this.y);
 	}
 
@@ -158,16 +184,45 @@ export default class NPoint {
 		return this.divide1(this.length());
 	}
 
-	min() {
+	lesser() {
 		return Math.min(this.x, this.y);
 	}
 
-	max() {
+	greater() {
 		return Math.max(this.x, this.y);
 	}
 
 	copy() {
 		return new NPoint(this.x, this.y);
+	}
+
+	mirrorX() {
+		return new NPoint(-this.x, this.y);
+	}
+
+	mirrorY() {
+		return new NPoint(this.x, -this.y);
+	}
+
+	mirrors() {
+		return [
+			this.copy(),
+			this.mirrorX(),
+			this.negate(),
+			this.mirrorY()
+		]
+	}
+
+	withinRect(cornerA, cornerB = null) {
+		if (cornerB === null) {
+			const mx = Math.abs(cornerA.x);
+			const my = Math.abs(cornerA.y);
+			return (this.x <= mx) && (this.x >= -mx) && (this.y <= my) && (this.y >= -my);
+		}
+
+		const lc = NPoint.min(cornerA, cornerB);
+		const gc = NPoint.max(cornerA, cornerB);
+		return (this.x <= gc.x) && (this.x >= -lc.x) && (this.y <= gc.y) && (this.y >= -lc.y);
 	}
 
 	rotate(rads) {
@@ -203,6 +258,14 @@ export default class NPoint {
 
 	distToSegment(v, w) {
 		return Math.sqrt(this.distToSegmentSquared(v, w));
+	}
+
+	equals(other) {
+		return this.x === other.x && this.y === other.y;
+	}
+
+	nearlyEqual(other, threshold) {
+		return Math.abs(this.x - other.x) <= threshold && Math.abs(this.y - other.y) <= threshold;
 	}
 
 	static same(...pts) {

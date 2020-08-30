@@ -1,5 +1,6 @@
 import NPoint from "../../npoint.js";
 import NColor from "../../ncolor.js"
+import {lerp} from "../../nmath.js"
 import GrabObj from "./grabbable.js";
 import NViewport from "../nviewport.js";
 
@@ -11,18 +12,20 @@ window.onload = function () {
 };
 
 function setupElements() {
+    const rootDiv = document.getElementById("rootDiv");
     viewport = new NViewport({
-        minZoomFactor: 0.25,
-        maxZoomFactor: 4,
+        minZoomFactor: 0.9,
+        maxZoomFactor: 8,
         navigable: true,
-        zoomSensitivity: 1,
-        panSensitivity: 0.5,
+        activeAreaBounded: true,
         zoomCenterMode: "pointer",
-        activeAreaDims: new NPoint(500, 300)
+        fittingMode: "shrink",
+        baseActiveDims: new NPoint(6000, 3750),
+        activeAreaPadding: new NPoint(50),
     });
-    viewport._background.setColor(NColor.fromHex("#1a1a1a"));
-    viewport.setup(document.getElementById("rootDiv"));
-    viewport.setZoomFactor(0.25);
+    viewport.setup(rootDiv);
+    viewport._activeBackground.setColor(NColor.fromHex("#1a1a1a"));
+    rootDiv.style.backgroundColor = "#101010";
 }
 
 function main() {
@@ -35,8 +38,19 @@ function main() {
         for (let i = -count; i < count; i++) {
             const grabbable = new GrabObj(viewport, new NPoint(i*25*Math.cos(Math.abs(i) / 15), height + 400 * Math.sin(i/5)));
             grabbable.setColor(NColor.lerp(color1, color2, (i+count)/(count*2)));
+            grabbable.setSize(lerp(25,10,Math.abs(i)/count));
             viewport.registerObj(grabbable);
         }
         height += 100;
+    }
+
+    const color1 = NColor.fromHex("#ff4747");
+    const color2 = NColor.fromHex("#4769ff");
+
+    for (const corner of viewport._activeAreaCorners) {
+        const grabbable = new GrabObj(viewport, corner);
+        grabbable.setColor(NColor.fromHex("#20B2AA"));
+        grabbable.setSize(100);
+        viewport.registerObj(grabbable);
     }
 }
