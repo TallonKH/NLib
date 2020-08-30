@@ -20,7 +20,7 @@ function setupElements() {
         zoomCenterMode: "pointer",
         fittingMode: "shrink",
         baseActiveDims: new NPoint(800, 500),
-        activeAreaPadding: new NPoint(50),
+        activeAreaPadding: new NPoint(100, 50),
     });
     viewport.setup(rootDiv);
     viewport._activeBackground.setColor(NColor.fromHex("#1a1a1a"));

@@ -469,7 +469,7 @@ export default class NViewport {
 			self._canvas.width = resizeRect.width;
 			self._canvas.height = resizeRect.height;
 			self._canvasDims = new NPoint(self._canvas.width, self._canvas.height);
-			self._canvasCenter = self._canvasDims.divide1(2);
+			self._canvasCenter = self._canvasDims.operate(c => c>>1);
 
 			const scaleDims = self._canvasDims.dividep(self._baseActiveAreaDims);
 			self._fittingScaleFactor = self._fittingMode === "fill" ? scaleDims.greater() : scaleDims.lesser();
@@ -698,7 +698,7 @@ export default class NViewport {
 	setPanCenter(newCenter, quiet = false) {
 		this._activeAreaCornersDivSpace = this._baseActiveAreaDims.multiply1(0.5 * this._fittingScaleFactor * this._zoomFactor).mirrors();
 
-		const clamping = this._activeAreaCornersDivSpace[0].addp(this._activeAreaPadding).subtractp(this._canvasDims.divide1(2)).max1(0);
+		const clamping = this._activeAreaCornersDivSpace[0].addp(this._activeAreaPadding).subtractp(this._canvasCenter).max1(0);
 		this._panCenter = newCenter.clamp1p(clamping);
 		if (!quiet) {
 			this._pointerUpdated();
