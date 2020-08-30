@@ -30,6 +30,8 @@ export default class NViewport {
 
 		this.targetTickrate = 60;
 
+		this._pixelRatio = window.devicePixelRatio;
+
 		this._activeAreaBounded = activeAreaBounded; // if false, canvas is infinite in all directions
 		this._baseActiveAreaDims; // assigned by setBaseActiveDims
 		this._activeAreaCorners; // assigned by setBaseActiveDims
@@ -43,6 +45,7 @@ export default class NViewport {
 		this._activeAreaPadding = activeAreaPadding;
 		this._activeBackground = new backgroundClass(this);
 		self._fittingScaleFactor;
+		self._zoomFactorFitted; // locked to fittingScaleFactor * zoomFactor
 		this._zoomCenterMode = zoomCenterMode;
 		/** If bounded, minZoomFactor is limited by the padding (ie: cannot zoom beyond the padding) */
 		this._minZoomFactor = minZoomFactor;
@@ -85,8 +88,12 @@ export default class NViewport {
 		this._cursorPriorities = ["none", "not-allowed", "help", "grabbing", "grab", "move", "pointer", "crosshair", "default"];
 
 		// size of the literal canvas element
-		this._canvasDims = NPoint.ZERO;
+		this._divDims = NPoint.ZERO;
 		// center of the literal canvas element
+		this._divCenter = NPoint.ZERO;
+		// size of the canvas context
+		this._canvasDims = NPoint.ZERO;
+		// center of the canvas context
 		this._canvasCenter = NPoint.ZERO;
 		this.nonDragThreshold = 8;
 
@@ -408,9 +415,9 @@ export default class NViewport {
 			this.ctx.clearRect(0, 0, this._canvasDims.x, this._canvasDims.y);
 
 			// matrix version of viewportToDivSpace
-			const scale = this._zoomFactor * this._fittingScaleFactor;
-			const xOffset = this._canvasCenter.x + this._panCenter.x;
-			const yOffset = this._canvasCenter.y + this._panCenter.y;
+			const scale = this._zoomFactorFitted;
+			const xOffset = this._canvasCenter.x + this._panCenter.x * this._pixelRatio;
+			const yOffset = this._canvasCenter.y + this._panCenter.y * this._pixelRatio;
 			this.ctx.setTransform(scale, 0, 0, scale, xOffset, yOffset);
 
 			if (this._activeAreaBounded) {
@@ -455,24 +462,28 @@ export default class NViewport {
 	}
 
 	divToViewportSpace(npoint) {
-		return npoint.subtractp(this._canvasCenter.addp(this._panCenter)).divide1(this._fittingScaleFactor * this._zoomFactor)
+		return npoint.subtractp(this._divCenter.addp(this._panCenter)).multiply1(this._pixelRatio / this._zoomFactorFitted);
 	}
 
 	viewportToDivSpace(npoint) {
-		return npoint.multiply1(this._fittingScaleFactor * this._zoomFactor).addp(this._canvasCenter.addp(this._panCenter));
+		return npoint.divide1(this._pixelRatio / this._zoomFactorFitted).addp(this._divCenter.addp(this._panCenter));
 	}
 
 	_setupScrollLogic() {
 		const self = this;
 		self.resizeObserver = new ResizeObserver(function (e) {
 			const resizeRect = e[0].contentRect;
-			self._canvas.width = resizeRect.width;
-			self._canvas.height = resizeRect.height;
-			self._canvasDims = new NPoint(self._canvas.width, self._canvas.height);
-			self._canvasCenter = self._canvasDims.operate(c => c>>1);
+			self._divDims = new NPoint(resizeRect.width, resizeRect.height);
+			self._divCenter = self._divDims.operate(c => c >> 1);
+
+			self._canvasDims = self._divDims.multiply1(self._pixelRatio);
+			self._canvasCenter = self._canvasDims.operate(c => c >> 1);
+			self._canvas.width = self._canvasDims.x;
+			self._canvas.height = self._canvasDims.y;
 
 			const scaleDims = self._canvasDims.dividep(self._baseActiveAreaDims);
 			self._fittingScaleFactor = self._fittingMode === "fill" ? scaleDims.greater() : scaleDims.lesser();
+			self._zoomFactorFitted = self._fittingScaleFactor * self._zoomFactor;
 
 			self.queueRedraw();
 		});
@@ -656,7 +667,7 @@ export default class NViewport {
 		if (zoomCenter === null) {
 			switch (this._zoomCenterMode) {
 				case "center":
-					zoomCenter = this._canvasCenter;
+					zoomCenter = this._divCenter;
 					break;
 				case "pointer":
 					zoomCenter = this._pointerElemPos;
@@ -664,7 +675,7 @@ export default class NViewport {
 			}
 		}
 		this.setPanCenter(this._panCenter.subtractp(
-			zoomCenter.subtractp(this._panCenter.addp(this._canvasCenter))
+			zoomCenter.subtractp(this._panCenter.addp(this._divCenter))
 			.divide1(prevZoomFactor).multiply1(this._zoomFactor - prevZoomFactor)
 		), quiet);
 	}
@@ -680,6 +691,7 @@ export default class NViewport {
 	setZoomFactor(newZoomFactor, zoomCenter = null, quiet = false) {
 		const prevZoomFactor = this._zoomFactor;
 		this._zoomFactor = clamp(newZoomFactor, this._minZoomFactor, this._maxZoomFactor);
+		this._zoomFactorFitted = this._fittingScaleFactor * this._zoomFactor;
 		this._zoomCounter = this.zoomFactorToCounter(this._zoomFactor);
 		this._zoomUpdatePanCenter(prevZoomFactor, zoomCenter, quiet);
 	}
@@ -688,6 +700,7 @@ export default class NViewport {
 		const prevZoomFactor = this._zoomFactor;
 		this._zoomCounter = clamp(newZoomCounter, this._minZoomCounter, this._maxZoomCounter);
 		this._zoomFactor = this.zoomCounterToFactor(this._zoomCounter);
+		this._zoomFactorFitted = this._fittingScaleFactor * this._zoomFactor;
 		this._zoomUpdatePanCenter(prevZoomFactor, zoomCenter, quiet);
 	}
 
@@ -696,7 +709,7 @@ export default class NViewport {
 	}
 
 	setPanCenter(newCenter, quiet = false) {
-		this._activeAreaCornersDivSpace = this._baseActiveAreaDims.multiply1(0.5 * this._fittingScaleFactor * this._zoomFactor).mirrors();
+		this._activeAreaCornersDivSpace = this._baseActiveAreaDims.multiply1(0.5 * this._zoomFactorFitted).mirrors();
 
 		const clamping = this._activeAreaCornersDivSpace[0].addp(this._activeAreaPadding).subtractp(this._canvasCenter).max1(0);
 		this._panCenter = newCenter.clamp1p(clamping);
