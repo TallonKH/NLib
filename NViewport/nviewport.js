@@ -679,10 +679,11 @@ export default class NViewport {
 				case "pointer":
 					zoomCenter = this._pointerElemPos;
 					break;
-				default:
 				case "screen":
 					zoomCenter = this._divCenter;
 					break;
+				default:
+					throw `"${this._zoomCenterMode}" is not a valid zoom center mode!`;
 			}
 		}
 		this.setPanCenter(this._panCenter.subtractp(
