@@ -721,10 +721,13 @@ export default class NViewport {
 	}
 
 	setPanCenter(newCenter, quiet = false) {
-		const corner = this._baseActiveAreaDims.multiply1(0.5 * this._zoomFactorFitted);
+		this._panCenter = newCenter;
+		if(this._activeAreaBounded){
+			const corner = this._baseActiveAreaDims.multiply1(0.5 * this._zoomFactorFitted);
+			const clamping = corner.subtractp(this._canvasCenter).divide1(this._pixelRatio).addp(this._activeAreaPadding).max1(0);
+			this._panCenter = this._panCenter.clamp1p(clamping);
+		}
 
-		const clamping = corner.subtractp(this._canvasCenter).divide1(this._pixelRatio).addp(this._activeAreaPadding).max1(0);
-		this._panCenter = newCenter.clamp1p(clamping);
 		if (!quiet) {
 			this._pointerUpdated();
 		}

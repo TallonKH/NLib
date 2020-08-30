@@ -17,7 +17,7 @@ function setupElements() {
         minZoomFactor: 0.9,
         maxZoomFactor: 8,
         navigable: true,
-        activeAreaBounded: true,
+        activeAreaBounded: false,
         zoomCenterMode: "pointer",
         fittingMode: "shrink",
         baseActiveDims: new NPoint(6000, 3750),
