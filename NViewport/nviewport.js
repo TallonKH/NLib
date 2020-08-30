@@ -38,7 +38,7 @@ export default class NViewport {
 		this.setBaseActiveDims(baseActiveDims);
 		this._fittingMode = fittingMode; // shrink, fill
 		/**
-		 * Padding is in element space pixels, not viewport space.
+		 * Padding is in element space pixels, not viewport space nor canvas space.
 		 * Works in conjunction with minZoomFactor (if zoomFactor == 1, not all 4 borders can be visible at once)
 		 */
 		this._activeAreaPadding = activeAreaPadding;
@@ -46,7 +46,6 @@ export default class NViewport {
 		self._fittingScaleFactor;
 		self._zoomFactorFitted; // locked to fittingScaleFactor * zoomFactor
 		this._zoomCenterMode = zoomCenterMode;
-		/** If bounded, minZoomFactor is limited by the padding (ie: cannot zoom beyond the padding) */
 		this._minZoomFactor = minZoomFactor;
 		this._maxZoomFactor = maxZoomFactor;
 		this._zoomSensitivity = zoomSensitivity;
@@ -64,10 +63,6 @@ export default class NViewport {
 
 		this._mouseDown = false;
 
-		/** raw mouse position (relative to viewport element) */
-		this._pointerElemPos = NPoint.ZERO;
-		this._pointerElemDelta = NPoint.ZERO;
-
 		/** relative to viewport objects */
 		this._pointerPos = NPoint.ZERO;
 		/** position where mouse was last pressed down */
@@ -80,6 +75,14 @@ export default class NViewport {
 		this._pointerDragDistance = 0;
 		/** farthest distance that mouse has been from its press position */
 		this._pointerDragMaxDelta = 0;
+		/** cumulative distance that mouse has been dragged in the current press */
+
+
+		/** raw mouse position (relative to element) */
+		this._pointerElemPos = NPoint.ZERO;
+		this._pointerElemDelta = NPoint.ZERO;
+		this._pointerElemDragDistance = 0;
+		this._mouseElemDownPos = NPoint.ZERO;
 
 		this._cursorSuggests = {
 			"default": 1
@@ -94,7 +97,7 @@ export default class NViewport {
 		this._canvasDims = NPoint.ZERO;
 		// center of the canvas context
 		this._canvasCenter = NPoint.ZERO;
-		this.nonDragThreshold = 8;
+		this.nonDragThreshold = 4;
 
 		this._allObjs = {};
 
@@ -503,6 +506,7 @@ export default class NViewport {
 		this._pointerElemPos = newPointerElemPos;
 		const newPointerPos = this.divToViewportSpace(this._pointerElemPos);
 		this._pointerDragDelta = newPointerPos.subtractp(this._mouseDownPos);
+		this._pointerElemDragDelta = newPointerElemPos.subtractp(this._mouseElemDownPos);
 		this._pointerDelta = newPointerPos.subtractp(this._pointerPos);
 		this._pointerPos = newPointerPos;
 		this._preOnPointerMove(e);
@@ -511,7 +515,9 @@ export default class NViewport {
 		if (this._mouseDown) {
 			this._pointerDragMaxDelta = Math.max(this._pointerDragMaxDelta, this._mouseDownPos.subtractp(newPointerPos).length());
 			this._pointerDragDistance += this._pointerDelta.length();
-			if (this._pointerDragDistance >= this.nonDragThreshold) {
+			this._pointerElemDragDistance += this._pointerElemDelta.length();
+
+			if (this._pointerElemDragDistance >= this.nonDragThreshold) {
 				for (const uuid of this._heldObjIdsSorted) {
 					const obj = this._allObjs[uuid];
 					if (!this._draggedObjIds.has(uuid)) {
@@ -756,7 +762,8 @@ export default class NViewport {
 
 		this._container.addEventListener("pointerdown", function (e) {
 			self.queueRedraw();
-			self._mouseDownPos = self.divToViewportSpace(self._pointerElemPos);
+			self._mouseElemDownPos = self._pointerElemPos;
+			self._mouseDownPos = self.divToViewportSpace(self._mouseElemDownPos);
 			self._mouseDown = true;
 			self._preOnMouseDown(e);
 			for (const uuid of self._pointerAwareObjIdsSorted) {
@@ -791,7 +798,7 @@ export default class NViewport {
 				}
 			}
 
-			const isDrag = self._pointerDragDistance >= self.nonDragThreshold;
+			const isDrag = self._pointerElemDragDistance >= self.nonDragThreshold;
 			if (!isDrag) {
 				self._preOnMouseClick(e);
 			}
@@ -806,6 +813,8 @@ export default class NViewport {
 			}
 			self._pointerDragDistance = 0;
 			self._pointerDragMaxDelta = 0;
+			self._pointerElemDragDistance = 0;
+
 			self.unregisterAllHeldObjs();
 			self.unregisterAllDraggedObjs();
 			self._postOnMouseUp(e);

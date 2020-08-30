@@ -14,7 +14,7 @@ window.onload = function () {
 function setupElements() {
     const rootDiv = document.getElementById("rootDiv");
     viewport = new NViewport({
-        minZoomFactor: 1,
+        minZoomFactor: 0.9,
         maxZoomFactor: 4,
         navigable: true,
         activeAreaBounded: true,
