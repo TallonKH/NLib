@@ -15,7 +15,7 @@ function setupElements() {
     const rootDiv = document.getElementById("rootDiv");
     viewport = new NViewport({
         minZoomFactor: 0.9,
-        maxZoomFactor: 4,
+        maxZoomFactor: 8,
         navigable: true,
         activeAreaBounded: true,
         zoomCenterMode: "pointer",

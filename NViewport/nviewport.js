@@ -15,7 +15,7 @@ export default class NViewport {
 		navigable = true,
 		zoomSensitivity = 1,
 		panSensitivity = 0.5,
-		zoomCenterMode = "pointer", //center, pointer,
+		zoomCenterMode = "pointer", //screen, pointer, origin
 		baseActiveDims = new NPoint(500, 500),
 		activeAreaBounded = false,
 		fittingMode = "shrink",
@@ -465,7 +465,7 @@ export default class NViewport {
 
 	divToViewportSpace(npoint) {
 		return npoint.subtractp(this._divCenter.addp(this._panCenter))
-		.multiply1(this._pixelRatio / this._zoomFactorFitted)
+			.multiply1(this._pixelRatio / this._zoomFactorFitted)
 		// .clamp1p(this._activeAreaCorners[0]);
 	}
 
@@ -673,11 +673,15 @@ export default class NViewport {
 
 		if (zoomCenter === null) {
 			switch (this._zoomCenterMode) {
-				case "center":
-					zoomCenter = this._divCenter;
+				case "origin":
+					zoomCenter = this.viewportToDivSpace(NPoint.ZERO);
 					break;
 				case "pointer":
 					zoomCenter = this._pointerElemPos;
+					break;
+				default:
+				case "screen":
+					zoomCenter = this._divCenter;
 					break;
 			}
 		}
