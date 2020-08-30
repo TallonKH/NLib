@@ -1,5 +1,6 @@
 import VPObject from "../vp_object.js";
 import NColor from "../../ncolor.js";
+import NPoint from "../../npoint.js";
 
 export default class GrabObj extends VPObject {
     constructor(viewport, position, {} = {}) {
@@ -59,7 +60,10 @@ export default class GrabObj extends VPObject {
 
     onDragged(pointerMoveEvent) {
         super.onDragged(pointerMoveEvent);
-        this._position = this.dragInitialPosition.addp(this._vp._pointerDragDelta);
+        this._position = this._vp.clampToBounds(
+            this.dragInitialPosition.addp(this._vp._pointerDragDelta),
+            new NPoint(-this._size)
+        );
         this._vp.queueRedraw();
     }
 

@@ -213,6 +213,18 @@ export default class NPoint {
 		]
 	}
 
+	withinRect(cornerA, cornerB = null) {
+		if (cornerB === null) {
+			const mx = Math.abs(cornerA.x);
+			const my = Math.abs(cornerA.y);
+			return (this.x <= mx) && (this.x >= -mx) && (this.y <= my) && (this.y >= -my);
+		}
+
+		const lc = NPoint.min(cornerA, cornerB);
+		const gc = NPoint.max(cornerA, cornerB);
+		return (this.x <= gc.x) && (this.x >= -lc.x) && (this.y <= gc.y) && (this.y >= -lc.y);
+	}
+
 	rotate(rads) {
 		const prevRads = this.getAngle();
 		const mag = this.length();
@@ -248,11 +260,11 @@ export default class NPoint {
 		return Math.sqrt(this.distToSegmentSquared(v, w));
 	}
 
-	equals(other){
+	equals(other) {
 		return this.x === other.x && this.y === other.y;
 	}
 
-	nearlyEqual(other, threshold){
+	nearlyEqual(other, threshold) {
 		return Math.abs(this.x - other.x) <= threshold && Math.abs(this.y - other.y) <= threshold;
 	}
 

@@ -715,6 +715,14 @@ export default class NViewport {
 		this._zoomUpdatePanCenter(prevZoomFactor, zoomCenter, quiet);
 	}
 
+	isInBounds(point){
+		return point.withinRect(this._activeAreaCorners[0]);
+	}
+
+	clampToBounds(point, padding){
+		return point.clamp1p(this._activeAreaCorners[0].addp(padding));
+	}
+
 	scrollZoomCounter(delta, quiet = false) {
 		this.setZoomCounter(this._zoomCounter + (delta * this._zoomSensitivity), null, quiet);
 	}
