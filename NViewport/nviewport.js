@@ -20,7 +20,7 @@ export default class NViewport {
 		activeAreaBounded = false,
 		fittingMode = "shrink",
 		backgroundClass = VPBackground,
-		activeAreaPadding = 100,
+		activeAreaPadding = new NPoint(100, 100),
 	} = {}) {
 		this._container;
 		this._canvas;
@@ -698,7 +698,7 @@ export default class NViewport {
 	setPanCenter(newCenter, quiet = false) {
 		this._activeAreaCornersDivSpace = this._baseActiveAreaDims.multiply1(0.5 * this._fittingScaleFactor * this._zoomFactor).mirrors();
 
-		const clamping = this._activeAreaCornersDivSpace[0].add1(this._activeAreaPadding).subtractp(this._canvasDims.divide1(2)).max1(0);
+		const clamping = this._activeAreaCornersDivSpace[0].addp(this._activeAreaPadding).subtractp(this._canvasDims.divide1(2)).max1(0);
 		this._panCenter = newCenter.clamp1p(clamping);
 		if (!quiet) {
 			this._pointerUpdated();

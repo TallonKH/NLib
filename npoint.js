@@ -5,9 +5,9 @@ import {
 export default class NPoint {
 	static ZERO = new NPoint(0, 0);
 
-	constructor(x = 0, y = 0) {
+	constructor(x = 0, y = null) {
 		this.x = x;
-		this.y = y;
+		this.y = (y === null) ? x : y;
 		Object.freeze(this);
 	}
 

@@ -11,19 +11,20 @@ window.onload = function () {
 };
 
 function setupElements() {
+    const rootDiv = document.getElementById("rootDiv");
     viewport = new NViewport({
         minZoomFactor: 1,
         maxZoomFactor: 4,
         navigable: true,
         activeAreaBounded: true,
-        zoomCenterMode: "center",
+        zoomCenterMode: "pointer",
         fittingMode: "shrink",
-        baseActiveDims: new NPoint(500, 500),
-        activeAreaPadding: 50,
+        baseActiveDims: new NPoint(800, 500),
+        activeAreaPadding: new NPoint(50),
     });
+    viewport.setup(rootDiv);
     viewport._activeBackground.setColor(NColor.fromHex("#1a1a1a"));
-    viewport.setup(document.getElementById("rootDiv"));
-    // viewport.setZoomFactor(1);
+    rootDiv.style.backgroundColor = "#101010";
 }
 
 function main() {
