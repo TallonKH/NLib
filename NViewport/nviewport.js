@@ -30,12 +30,11 @@ export default class NViewport {
 
 		this.targetTickrate = 60;
 
-		this._pixelRatio = window.devicePixelRatio;
+		this._pixelRatio = 3//window.devicePixelRatio;
 
 		this._activeAreaBounded = activeAreaBounded; // if false, canvas is infinite in all directions
 		this._baseActiveAreaDims; // assigned by setBaseActiveDims
 		this._activeAreaCorners; // assigned by setBaseActiveDims
-		this._activeAreaCornersDivSpace;
 		this.setBaseActiveDims(baseActiveDims);
 		this._fittingMode = fittingMode; // shrink, fill
 		/**
@@ -462,7 +461,9 @@ export default class NViewport {
 	}
 
 	divToViewportSpace(npoint) {
-		return npoint.subtractp(this._divCenter.addp(this._panCenter)).multiply1(this._pixelRatio / this._zoomFactorFitted);
+		return npoint.subtractp(this._divCenter.addp(this._panCenter))
+		.multiply1(this._pixelRatio / this._zoomFactorFitted)
+		// .clamp1p(this._activeAreaCorners[0]);
 	}
 
 	viewportToDivSpace(npoint) {
@@ -709,9 +710,9 @@ export default class NViewport {
 	}
 
 	setPanCenter(newCenter, quiet = false) {
-		this._activeAreaCornersDivSpace = this._baseActiveAreaDims.multiply1(0.5 * this._zoomFactorFitted).mirrors();
+		const corner = this._baseActiveAreaDims.multiply1(0.5 * this._zoomFactorFitted);
 
-		const clamping = this._activeAreaCornersDivSpace[0].addp(this._activeAreaPadding).subtractp(this._canvasCenter).max1(0);
+		const clamping = corner.subtractp(this._canvasCenter).divide1(this._pixelRatio).addp(this._activeAreaPadding).max1(0);
 		this._panCenter = newCenter.clamp1p(clamping);
 		if (!quiet) {
 			this._pointerUpdated();
