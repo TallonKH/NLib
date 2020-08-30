@@ -30,7 +30,7 @@ export default class NViewport {
 
 		this.targetTickrate = 60;
 
-		this._pixelRatio = 3//window.devicePixelRatio;
+		this._pixelRatio = window.devicePixelRatio;
 
 		this._activeAreaBounded = activeAreaBounded; // if false, canvas is infinite in all directions
 		this._baseActiveAreaDims; // assigned by setBaseActiveDims
