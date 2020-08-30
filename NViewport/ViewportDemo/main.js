@@ -12,17 +12,18 @@ window.onload = function () {
 
 function setupElements() {
     viewport = new NViewport({
-        minZoomFactor: 0.25,
+        minZoomFactor: 1,
         maxZoomFactor: 4,
         navigable: true,
-        zoomSensitivity: 1,
-        panSensitivity: 0.5,
+        activeAreaBounded: true,
         zoomCenterMode: "pointer",
-        activeAreaDims: new NPoint(500, 300)
+        fittingMode: "shrink",
+        baseActiveDims: new NPoint(500, 500),
+        activeAreaPadding: 0,
     });
-    viewport._background.setColor(NColor.fromHex("#1a1a1a"));
+    viewport._activeBackground.setColor(NColor.fromHex("#1a1a1a"));
     viewport.setup(document.getElementById("rootDiv"));
-    viewport.setZoomFactor(0.25);
+    // viewport.setZoomFactor(1);
 }
 
 function main() {
@@ -43,7 +44,9 @@ function main() {
     const color1 = NColor.fromHex("#ff4747");
     const color2 = NColor.fromHex("#4769ff");
 
-    let grabbable = new GrabObj(viewport, new NPoint(-250, -150));
-    grabbable.setColor(NColor.lerp(color1, color2, 0));
-    viewport.registerObj(grabbable);
+    for(const corner of viewport._activeAreaCorners){
+        const grabbable = new GrabObj(viewport, corner);
+        grabbable.setColor(NColor.fromHex("#20B2AA"));
+        viewport.registerObj(grabbable);
+    }
 }

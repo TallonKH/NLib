@@ -170,6 +170,23 @@ export default class NPoint {
 		return new NPoint(this.x, this.y);
 	}
 
+	mirrorX(){
+		return new NPoint(-this.x, this.y);
+	}
+
+	mirrorY(){
+		return new NPoint(this.x, -this.y);
+	}
+
+	mirrors(){
+		return [
+			this.copy(),
+			this.mirrorX(),
+			this.negate(),
+			this.mirrorY()
+		]
+	}
+
 	rotate(rads) {
 		const prevRads = this.getAngle();
 		const mag = this.length();

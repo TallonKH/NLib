@@ -16,33 +16,44 @@ export default class NViewport {
 		zoomSensitivity = 1,
 		panSensitivity = 0.5,
 		zoomCenterMode = "pointer", //center, pointer,
-		activeAreaDims = "INFINITE",
-		backgroundClass = VPBackground
+		baseActiveDims = new NPoint(500, 500),
+		activeAreaBounded = false,
+		fittingMode = "shrink",
+		backgroundClass = VPBackground,
+		activeAreaPadding = 100,
 	} = {}) {
 		this._container;
 		this._canvas;
-		
+
 		this._setupDone = false;
 		this._redrawQueued = false;
 
-		this._activeAreaDims = activeAreaDims;
-		this._activeAreaFitMode = "shrink"; // shrink, fill
-		this._activeAreaPadding = new NPoint(10, 10);
-		this._background = new backgroundClass(this);
-
 		this.targetTickrate = 60;
 
+		this._activeAreaBounded = activeAreaBounded; // if false, canvas is infinite in all directions
+		this._baseActiveAreaDims; // assigned by setBaseActiveDims
+		this._activeAreaCorners; // assigned by setBaseActiveDims
+		this.setBaseActiveDims(baseActiveDims);
+		this._fittingMode = fittingMode; // shrink, fill
+		/**
+		 * Padding is in element space pixels, not viewport space.
+		 * Works in conjunction with minZoomFactor (if zoomFactor == 1, not all 4 borders can be visible at once)
+		 */
+		this._activeAreaPadding = activeAreaPadding;
+		this._activeBackground = new backgroundClass(this);
+		self._fittingScaleFactor;
 		this._zoomCenterMode = zoomCenterMode;
+		/** If bounded, minZoomFactor is limited by the padding (ie: cannot zoom beyond the padding) */
 		this._minZoomFactor = minZoomFactor;
 		this._maxZoomFactor = maxZoomFactor;
-		this.zoomSensitivity = zoomSensitivity;
+		this._zoomSensitivity = zoomSensitivity;
 		this._zoomCounterBase = 1.0075;
 		this._minZoomCounter = this.zoomFactorToCounter(this._minZoomFactor);
 		this._maxZoomCounter = this.zoomFactorToCounter(this._maxZoomFactor);
 		this._zoomFactor = 1;
 		this._zoomCounter = this.zoomFactorToCounter(this._zoomFactor);
 
-		this.navigable = navigable;
+		this._navigable = navigable;
 		this.inversePanning = true;
 		this._panCenter = NPoint.ZERO;
 		this.panSensitivity = panSensitivity;
@@ -140,13 +151,18 @@ export default class NViewport {
 			this._setupScrollLogic();
 			this._setupMouseListeners();
 			this._setupKeyListeners();
-			this.registerObj(this._background);
+			this.registerObj(this._activeBackground);
 			this._setupDone = true;
 		}
 	}
 
 	recenter() {
 		this.setPanCenter(NPoint.ZERO);
+	}
+
+	setBaseActiveDims(dims) {
+		this._baseActiveAreaDims = dims;
+		this._activeAreaCorners = dims.multiply1(0.5).mirrors();
 	}
 
 	_preOnMouseDown(mouseClickEvent) {
@@ -269,13 +285,13 @@ export default class NViewport {
 
 	unregisterAllDrawnObjs() {
 		this._drawnObjIds.clear();
-		this.registerDrawnObj(this._background);
+		this.registerDrawnObj(this._activeBackground);
 	}
 
 	unregisterAllMouseListeningObjs() {
 		this._mouseListeningObjIds.clear();
 		this._mouseListeningObjIdsSorted.length = 0;
-		this.registerMouseListeningObj(this._background);
+		this.registerMouseListeningObj(this._activeBackground);
 	}
 
 	unregisterAllPointerAwareObjs() {
@@ -303,7 +319,7 @@ export default class NViewport {
 	}
 
 	forget(obj) {
-		if (obj === this._background) {
+		if (obj === this._activeBackground) {
 			return false;
 		}
 
@@ -381,20 +397,39 @@ export default class NViewport {
 		}
 	}
 
+
+
 	__redrawUnbound() {
 		if (this._setupDone) {
 			this._redrawQueued = false;
+			this.ctx.resetTransform();
+			this.ctx.clearRect(0, 0, this._canvasDims.x, this._canvasDims.y);
+
+			const scale = this._zoomFactor * this._fittingScaleFactor;
+			const xOffset = this._canvasCenter.x + this._panCenter.x;
+			const yOffset = this._canvasCenter.y + this._panCenter.y;
+			this.ctx.setTransform(scale, 0, 0, scale, xOffset, yOffset);
+
+			if (this._activeAreaBounded) {
+				this.ctx.save();
+				this.ctx.beginPath();
+				const dims = this._baseActiveAreaDims;
+				this.ctx.rect(-(dims.x >> 1), -(dims.y >> 1), dims.x, dims.y);
+				this.ctx.closePath();
+				this.ctx.clip();
+			}
+
 			const drawnObjIdsSorted = Array.from(this._drawnObjIds);
 			drawnObjIdsSorted.sort(this.reverseDepthSorter);
-			// const scale = this._zoomFactor;
-			let scale = this._canvasDims.dividep(this._activeAreaDims).min();
-			const xOffset = this._panCenter.x + this._canvasCenter.x;
-			const yOffset = this._panCenter.y + this._canvasCenter.y;
-			this.ctx.setTransform(scale, 0, 0, scale, xOffset, yOffset);
 			for (const uuid of drawnObjIdsSorted) {
 				const obj = this._allObjs[uuid];
 				obj.draw(this.ctx);
 			}
+
+			if (this._activeAreaBounded) {
+				this.ctx.restore();
+			}
+
 			this.onRedraw();
 		}
 	}
@@ -432,6 +467,10 @@ export default class NViewport {
 			self._canvas.height = resizeRect.height;
 			self._canvasDims = new NPoint(self._canvas.width, self._canvas.height);
 			self._canvasCenter = self._canvasDims.divide1(2);
+
+			const scaleDims = self._canvasDims.dividep(self._baseActiveAreaDims);
+			self._fittingScaleFactor = self._fittingMode === "fill" ? scaleDims.max() : scaleDims.min();
+
 			self.queueRedraw();
 		});
 		self.resizeObserver.observe(this._container);
@@ -650,12 +689,20 @@ export default class NViewport {
 	}
 
 	scrollZoomCounter(delta, quiet = false) {
-		this.setZoomCounter(this._zoomCounter + (delta * this.zoomSensitivity), null, quiet);
+		this.setZoomCounter(this._zoomCounter + (delta * this._zoomSensitivity), null, quiet);
 	}
 
 	setPanCenter(newCenter, quiet = false) {
-		const mag = this._canvasDims.divide1(this._zoomFactor).subtractp(this._canvasDims.divide1(this._minZoomFactor)).negate();
-		this._panCenter = newCenter //.clamp1p(mag.multiply1(this._zoomFactor));
+		// const mag = this._canvasDims.divide1(this._zoomFactor).subtractp(this._canvasDims.divide1(this._minZoomFactor)).negate();
+		// difficult because the clamp is in viewport space, but padding is in div space
+		// clamp
+		// let a = this._baseActiveAreaDims.subtractp(this._canvasDims.divide1(this._fittingScaleFactor));
+		// console.log(a.toString())
+		// this._panCenter = newCenter.clamp1p(this._baseActiveAreaDims.multiply1(this._zoomFactor / this._fittingScaleFactor));
+		
+		// this works ONLY for zoomfactor = 1
+		// TODO fix
+		this._panCenter = newCenter.clamp1p(this._canvasDims.divide1(this._fittingScaleFactor).subtractp(this._baseActiveAreaDims));
 		if (!quiet) {
 			this._pointerUpdated();
 		}
