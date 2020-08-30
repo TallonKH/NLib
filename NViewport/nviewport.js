@@ -466,7 +466,6 @@ export default class NViewport {
 	divToViewportSpace(npoint) {
 		return npoint.subtractp(this._divCenter.addp(this._panCenter))
 			.multiply1(this._pixelRatio / this._zoomFactorFitted)
-		// .clamp1p(this._activeAreaCorners[0]);
 	}
 
 	viewportToDivSpace(npoint) {
@@ -721,17 +720,19 @@ export default class NViewport {
 	}
 
 	setPanCenter(newCenter, quiet = false) {
-		this._panCenter = newCenter;
-		if(this._activeAreaBounded){
+		let newPanCenter = newCenter;
+		if (this._activeAreaBounded) {
 			const corner = this._baseActiveAreaDims.multiply1(0.5 * this._zoomFactorFitted);
 			const clamping = corner.subtractp(this._canvasCenter).divide1(this._pixelRatio).addp(this._activeAreaPadding).max1(0);
-			this._panCenter = this._panCenter.clamp1p(clamping);
+			newPanCenter = newPanCenter.clamp1p(clamping);
 		}
-
-		if (!quiet) {
-			this._pointerUpdated();
+		if (!this._panCenter.equals(newPanCenter)) {
+			this._panCenter = newPanCenter;
+			if (!quiet) {
+				this._pointerUpdated();
+			}
+			this.queueRedraw();
 		}
-		this.queueRedraw();
 	}
 
 	scrollPanCenter(deltaX, deltaY, quiet = false) {
@@ -833,7 +834,6 @@ export default class NViewport {
 			e.preventDefault();
 		});
 
-		// this.container.style.touchAction = "none";
 		document.addEventListener("pointermove", function (e) {
 			self._pointerUpdated(e);
 			e.preventDefault();

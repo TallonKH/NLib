@@ -17,11 +17,11 @@ function setupElements() {
         minZoomFactor: 0.9,
         maxZoomFactor: 8,
         navigable: true,
-        activeAreaBounded: false,
+        activeAreaBounded: true,
         zoomCenterMode: "pointer",
         fittingMode: "shrink",
         baseActiveDims: new NPoint(6000, 3750),
-        activeAreaPadding: new NPoint(0),
+        activeAreaPadding: new NPoint(50),
     });
     viewport.setup(rootDiv);
     viewport._activeBackground.setColor(NColor.fromHex("#1a1a1a"));

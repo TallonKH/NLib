@@ -248,6 +248,14 @@ export default class NPoint {
 		return Math.sqrt(this.distToSegmentSquared(v, w));
 	}
 
+	equals(other){
+		return this.x === other.x && this.y === other.y;
+	}
+
+	nearlyEqual(other, threshold){
+		return Math.abs(this.x - other.x) <= threshold && Math.abs(this.y - other.y) <= threshold;
+	}
+
 	static same(...pts) {
 		const x = pts[0].x;
 		const y = pts[0].y;

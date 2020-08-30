@@ -1,5 +1,6 @@
 import VPObject from "./vp_object.js";
 import NColor from "../ncolor.js";
+import NPoint from "../npoint.js";
 
 export default class VPBackground extends VPObject {
     constructor(viewport, {} = {}) {
@@ -20,8 +21,9 @@ export default class VPBackground extends VPObject {
     draw(ctx) {
         ctx.fillStyle = this.colorHex;
         if (this._vp._activeAreaBounded) {
+            const corner = this._vp._activeAreaCorners[0];
             const dims = this._vp._baseActiveAreaDims;
-            ctx.fillRect(-(dims.x >> 1), -(dims.y >> 1), dims.x, dims.y);
+            ctx.fillRect(-corner.x, -corner.y, dims.x, dims.y);
         } else {
             let currentTransform = ctx.getTransform();
             ctx.resetTransform();
@@ -37,8 +39,8 @@ export default class VPBackground extends VPObject {
 
     onClicked(mouseClickEvent) {
         super.onClicked(mouseClickEvent);
-        console.log("==========");
-        // this._vp.recenter();
+        this._vp.setZoomFactor(1, NPoint.ZERO);
+        this._vp.recenter();
     }
 
     onDragStarted(pointerMoveEvent) {
