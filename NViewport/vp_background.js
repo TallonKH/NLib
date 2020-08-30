@@ -37,7 +37,8 @@ export default class VPBackground extends VPObject {
 
     onClicked(mouseClickEvent) {
         super.onClicked(mouseClickEvent);
-        this._vp.recenter();
+        console.log("==========");
+        // this._vp.recenter();
     }
 
     onDragStarted(pointerMoveEvent) {

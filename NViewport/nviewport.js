@@ -33,6 +33,7 @@ export default class NViewport {
 		this._activeAreaBounded = activeAreaBounded; // if false, canvas is infinite in all directions
 		this._baseActiveAreaDims; // assigned by setBaseActiveDims
 		this._activeAreaCorners; // assigned by setBaseActiveDims
+		this._activeAreaCornersDivSpace;
 		this.setBaseActiveDims(baseActiveDims);
 		this._fittingMode = fittingMode; // shrink, fill
 		/**
@@ -55,6 +56,7 @@ export default class NViewport {
 
 		this._navigable = navigable;
 		this.inversePanning = true;
+		// the offset of the origin to the viewport center. In screen space.
 		this._panCenter = NPoint.ZERO;
 		this.panSensitivity = panSensitivity;
 
@@ -405,6 +407,7 @@ export default class NViewport {
 			this.ctx.resetTransform();
 			this.ctx.clearRect(0, 0, this._canvasDims.x, this._canvasDims.y);
 
+			// matrix version of viewportToDivSpace
 			const scale = this._zoomFactor * this._fittingScaleFactor;
 			const xOffset = this._canvasCenter.x + this._panCenter.x;
 			const yOffset = this._canvasCenter.y + this._panCenter.y;
@@ -451,12 +454,12 @@ export default class NViewport {
 		this.ctx = this._canvas.getContext("2d");
 	}
 
-	pageToViewSpace(npoint) {
-		return npoint.subtractp(this._panCenter.addp(this._canvasCenter)).divide1(this._zoomFactor);
+	divToViewportSpace(npoint) {
+		return npoint.subtractp(this._canvasCenter.addp(this._panCenter)).divide1(this._fittingScaleFactor * this._zoomFactor)
 	}
 
-	canvasToViewSpace(npoint) {
-		return npoint.add2(this._canvas.width / 2, this._canvas.height / 2).multiply1(this._zoomFactor).addp(this._panCenter.addp(this._canvasCenter));
+	viewportToDivSpace(npoint) {
+		return npoint.multiply1(this._fittingScaleFactor * this._zoomFactor).addp(this._canvasCenter.addp(this._panCenter));
 	}
 
 	_setupScrollLogic() {
@@ -469,7 +472,7 @@ export default class NViewport {
 			self._canvasCenter = self._canvasDims.divide1(2);
 
 			const scaleDims = self._canvasDims.dividep(self._baseActiveAreaDims);
-			self._fittingScaleFactor = self._fittingMode === "fill" ? scaleDims.max() : scaleDims.min();
+			self._fittingScaleFactor = self._fittingMode === "fill" ? scaleDims.greater() : scaleDims.lesser();
 
 			self.queueRedraw();
 		});
@@ -486,7 +489,7 @@ export default class NViewport {
 		}
 		this._pointerElemDelta = newPointerElemPos.subtractp(this._pointerElemPos);
 		this._pointerElemPos = newPointerElemPos;
-		const newPointerPos = this.pageToViewSpace(this._pointerElemPos);
+		const newPointerPos = this.divToViewportSpace(this._pointerElemPos);
 		this._pointerDragDelta = newPointerPos.subtractp(this._mouseDownPos);
 		this._pointerDelta = newPointerPos.subtractp(this._pointerPos);
 		this._pointerPos = newPointerPos;
@@ -693,16 +696,10 @@ export default class NViewport {
 	}
 
 	setPanCenter(newCenter, quiet = false) {
-		// const mag = this._canvasDims.divide1(this._zoomFactor).subtractp(this._canvasDims.divide1(this._minZoomFactor)).negate();
-		// difficult because the clamp is in viewport space, but padding is in div space
-		// clamp
-		// let a = this._baseActiveAreaDims.subtractp(this._canvasDims.divide1(this._fittingScaleFactor));
-		// console.log(a.toString())
-		// this._panCenter = newCenter.clamp1p(this._baseActiveAreaDims.multiply1(this._zoomFactor / this._fittingScaleFactor));
-		
-		// this works ONLY for zoomfactor = 1
-		// TODO fix
-		this._panCenter = newCenter.clamp1p(this._canvasDims.divide1(this._fittingScaleFactor).subtractp(this._baseActiveAreaDims));
+		this._activeAreaCornersDivSpace = this._baseActiveAreaDims.multiply1(0.5 * this._fittingScaleFactor * this._zoomFactor).mirrors();
+
+		const clamping = this._activeAreaCornersDivSpace[0].add1(this._activeAreaPadding).subtractp(this._canvasDims.divide1(2)).max1(0);
+		this._panCenter = newCenter.clamp1p(clamping);
 		if (!quiet) {
 			this._pointerUpdated();
 		}
@@ -745,7 +742,7 @@ export default class NViewport {
 
 		this._container.addEventListener("pointerdown", function (e) {
 			self.queueRedraw();
-			self._mouseDownPos = self.pageToViewSpace(self._pointerElemPos);
+			self._mouseDownPos = self.divToViewportSpace(self._pointerElemPos);
 			self._mouseDown = true;
 			self._preOnMouseDown(e);
 			for (const uuid of self._pointerAwareObjIdsSorted) {

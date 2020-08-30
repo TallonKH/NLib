@@ -16,10 +16,10 @@ function setupElements() {
         maxZoomFactor: 4,
         navigable: true,
         activeAreaBounded: true,
-        zoomCenterMode: "pointer",
+        zoomCenterMode: "center",
         fittingMode: "shrink",
         baseActiveDims: new NPoint(500, 500),
-        activeAreaPadding: 0,
+        activeAreaPadding: 50,
     });
     viewport._activeBackground.setColor(NColor.fromHex("#1a1a1a"));
     viewport.setup(document.getElementById("rootDiv"));
@@ -44,9 +44,13 @@ function main() {
     const color1 = NColor.fromHex("#ff4747");
     const color2 = NColor.fromHex("#4769ff");
 
-    for(const corner of viewport._activeAreaCorners){
+    for (const corner of viewport._activeAreaCorners) {
         const grabbable = new GrabObj(viewport, corner);
         grabbable.setColor(NColor.fromHex("#20B2AA"));
         viewport.registerObj(grabbable);
     }
+    const grabbable = new GrabObj(viewport, NPoint.ZERO);
+    grabbable.setColor(NColor.fromHex("#A0425A"));
+    grabbable.setSize(5);
+    viewport.registerObj(grabbable);
 }
