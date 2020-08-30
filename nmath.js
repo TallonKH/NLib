@@ -16,6 +16,23 @@ export function lerp(min, max, alpha) {
 	return max * alpha + min * (1 - alpha);
 }
 
+easingFuncs = {"quadratic":quadratic, "cubic":easeCubic, "sine":easeSine}
+export function ease(x, method){
+	return easingFuncs[method](x);
+}
+
+export function easeQuad(x){
+	return x < 0.5 ? (2 * x * x) : (1 - pow(-2 * x + 2, 2) * 0.5);
+}
+
+export function easeCubic(x) {
+	return x < 0.5 ? (4 * x * x * x) : (1 - pow(-2 * x + 2, 3) * 0.5);
+}
+
+export function easeSine(x) {
+	return -(cos(PI * x) - 1) / 2;
+}
+
 export function average(values) {
 	return values.reduce(a, b => a + b, 0) / values.length;
 }

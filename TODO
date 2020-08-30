@@ -1,6 +1,3 @@
-Viewport
-- fix cursor being able to move/click items beyond the bounds
-
 Libraries
 - multi lerp (nums and colors)
 - easing functions
