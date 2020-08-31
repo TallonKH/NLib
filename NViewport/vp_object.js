@@ -1,3 +1,7 @@
+import {
+    insertSorted,
+    removeSorted
+} from "../nmisc.js";
 import NPoint from "../npoint.js";
 
 var idCounter = 0;
@@ -39,7 +43,19 @@ export default class VPObject {
 
     }
 
-    setSize(size){
+    setZOrder(newOrder) {
+        removeSorted(this._vp._drawnObjIdsSorted, this._uuid, this._vp.reverseDepthSorter);
+        this._zOrder = newOrder;
+        insertSorted(this._vp._drawnObjIdsSorted, this._uuid, this._vp.reverseDepthSorter);
+    }
+
+    setZSubOrder(newSubOrder) {
+        removeSorted(this._vp._drawnObjIdsSorted, this._uuid, this._vp.reverseDepthSorter);
+        this._zSubOrder = newSubOrder;
+        insertSorted(this._vp._drawnObjIdsSorted, this._uuid, this._vp.reverseDepthSorter);
+    }
+
+    setSize(size) {
         this._size = size;
         this._vp.queueRedraw();
     }

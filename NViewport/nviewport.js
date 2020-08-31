@@ -83,7 +83,7 @@ export default class NViewport {
 		this._pointerElemDelta = NPoint.ZERO;
 		this._pointerElemDragDistance = 0;
 		this._mouseElemDownPos = NPoint.ZERO;
-
+		this._pointerWithinBounds = false;
 		this._cursorSuggests = {
 			"default": 1
 		};
@@ -103,38 +103,37 @@ export default class NViewport {
 
 		this._drawRegisterCounter = 0
 		this._drawnObjIds = new Set();
+		this._drawnObjIdsSorted = [];
 		this._mouseListeningObjIds = new Set();
+		this._mouseListeningObjIdsSorted = [];
 		/** objects that the pointer is overlapping */
 		this._pointerAwareObjIds = new Set();
+		this._pointerAwareObjIdsSorted = [];
 		/** objects that the pointer is overlapping */
 		this._pointerOverlappingObjIds = new Set();
+		this._pointerOverlappingObjIdsSorted = [];
 		/** objects that the mouse is pressed down on */
 		this._heldObjIds = new Set();
+		this._heldObjIdsSorted = [];
 		/** objects that the mouse is pressed down on and moved sufficiently */
 		this._draggedObjIds = new Set();
+		this._draggedObjIdsSorted = [];
 
-		// this.drawnObjIdsSorted = []
-		this._mouseListeningObjIdsSorted = []
-		this._pointerAwareObjIdsSorted = []
-		this._pointerOverlappingObjIdsSorted = []
-		this._heldObjIdsSorted = []
-		this._draggedObjIdsSorted = []
-
-		this._preMouseDownListeners = {}
-		this._preMouseUpListeners = {}
-		this._preMouseClickListeners = {}
-		this._prePointerMoveListeners = {}
-		this._preMouselListeners = {}
-		this._preMouseWheelListeners = {}
-		this._postMouseDownListeners = {}
-		this._postMouseUpListeners = {}
-		this._postMouseClickListeners = {}
-		this._postPointerMoveListeners = {}
-		this._postMouseWheelListeners = {}
-		this._tickListeners = {}
+		this._preMouseDownListeners = {};
+		this._preMouseUpListeners = {};
+		this._preMouseClickListeners = {};
+		this._prePointerMoveListeners = {};
+		this._preMouselListeners = {};
+		this._preMouseWheelListeners = {};
+		this._postMouseDownListeners = {};
+		this._postMouseUpListeners = {};
+		this._postMouseClickListeners = {};
+		this._postPointerMoveListeners = {};
+		this._postMouseWheelListeners = {};
+		this._tickListeners = {};
 
 		// is the mouse over the viewport?
-		this._pointerWithin = false;
+		this._pointerWithinElement = false;
 		this._ctrlDown = false;
 		this._shiftDown = false;
 		this._altDown = false;
@@ -230,6 +229,7 @@ export default class NViewport {
 	registerDrawnObj(obj) {
 		obj._drawRegisterNum = this._drawRegisterCounter++;
 		this._drawnObjIds.add(obj._uuid);
+		insertSorted(this._drawnObjIdsSorted, obj._uuid, this.reverseDepthSorter);
 	}
 
 	registerMouseListeningObj(obj) {
@@ -263,6 +263,7 @@ export default class NViewport {
 
 	unregisterDrawnObj(obj) {
 		this._drawnObjIds.delete(obj._uuid);
+		removeSorted(this._drawnObjIdsSorted, obj._uuid, this.reverseDepthSorter);
 	}
 
 	unregisterMouseListeningObj(obj) {
@@ -296,6 +297,7 @@ export default class NViewport {
 
 	unregisterAllDrawnObjs() {
 		this._drawnObjIds.clear();
+		this._drawnObjIdsSorted.length = 0;
 		this.registerDrawnObj(this._activeBackground);
 	}
 
@@ -431,9 +433,7 @@ export default class NViewport {
 				this.ctx.clip();
 			}
 
-			const drawnObjIdsSorted = Array.from(this._drawnObjIds);
-			drawnObjIdsSorted.sort(this.reverseDepthSorter);
-			for (const uuid of drawnObjIdsSorted) {
+			for (const uuid of this._drawnObjIdsSorted) {
 				const obj = this._allObjs[uuid];
 				obj.draw(this.ctx);
 			}
@@ -508,7 +508,10 @@ export default class NViewport {
 		this._pointerElemDragDelta = newPointerElemPos.subtractp(this._mouseElemDownPos);
 		this._pointerDelta = newPointerPos.subtractp(this._pointerPos);
 		this._pointerPos = newPointerPos;
+		this._pointerWithinBounds = this.isInBounds(this._pointerPos);
+
 		this._preOnPointerMove(e);
+
 
 		// dragging
 		if (this._mouseDown) {
@@ -532,8 +535,6 @@ export default class NViewport {
 		const prevPointerAwareObjIds = new Set(this._pointerAwareObjIds);
 		const currentPointerAwareObjIds = new Set();
 		const newlyPointerAwareObjs = [];
-		
-		const isInBounds = this.isInBounds(this._pointerPos);
 
 		for (const uuid of this._mouseListeningObjIdsSorted) {
 			const obj = this._allObjs[uuid];
@@ -542,7 +543,7 @@ export default class NViewport {
 				continue;
 			}
 
-			if (obj.intersects(this._pointerPos, isInBounds)) {
+			if (obj.intersects(this._pointerPos, this._pointerWithinBounds)) {
 				currentPointerAwareObjIds.add(uuid);
 				// is newly aware
 				if (!prevPointerAwareObjIds.has(uuid)) {
@@ -624,7 +625,6 @@ export default class NViewport {
 		const self = this;
 		document.addEventListener("keydown", function (e) {
 			const keyCode = e.key;
-			console.log(e.key);
 			switch (keyCode) {
 				case "Shift":
 					self._shiftDown = true;
@@ -636,7 +636,7 @@ export default class NViewport {
 					self._altDown = true;
 					break;
 				default:
-					if (self._pointerWithin) {
+					if (self._pointerWithinElement) {
 						self._downKeys.add(keyCode);
 						self.keyPressed(keyCode);
 					}
@@ -758,11 +758,11 @@ export default class NViewport {
 	_setupMouseListeners() {
 		const self = this;
 		this._container.addEventListener("pointerenter", function (e) {
-			self._pointerWithin = true;
+			self._pointerWithinElement = true;
 		});
 
 		this._container.addEventListener("pointerleave", function (e) {
-			self._pointerWithin = false;
+			self._pointerWithinElement = false;
 		});
 
 		this._container.addEventListener("wheel", function (e) {
