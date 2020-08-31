@@ -624,14 +624,15 @@ export default class NViewport {
 		const self = this;
 		document.addEventListener("keydown", function (e) {
 			const keyCode = e.key;
+			console.log(e.key);
 			switch (keyCode) {
-				case 16:
+				case "Shift":
 					self._shiftDown = true;
 					break;
-				case 17:
+				case "Control":
 					self._ctrlDown = true;
 					break;
-				case 18:
+				case "Alt":
 					self._altDown = true;
 					break;
 				default:
@@ -646,13 +647,13 @@ export default class NViewport {
 		document.addEventListener("keyup", function (e) {
 			const keyCode = e.key;
 			switch (keyCode) {
-				case 16:
+				case "Shift":
 					self._shiftDown = false;
 					break;
-				case 17:
+				case "Control":
 					self._ctrlDown = false;
 					break;
-				case 18:
+				case "Alt":
 					self._altDown = false;
 					break;
 				default:
