@@ -33,7 +33,7 @@ export default class VPBackground extends VPObject {
         }
     }
 
-    intersects(point) {
+    intersects(point, isInBounds) {
         return true;
     }
 

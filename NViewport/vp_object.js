@@ -61,8 +61,8 @@ export default class VPObject {
         this._suggestedCursors = {};
     }
 
-    intersects(point) {
-        return this._vp.isInBounds(point) && this._position.subtractp(point).lengthSquared() < Math.pow(this._size, 2);
+    intersects(point, inBounds) {
+        return inBounds && this._position.subtractp(point).lengthSquared() < Math.pow(this._size, 2);
     }
 
     draw(ctx) {

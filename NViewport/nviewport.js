@@ -532,6 +532,9 @@ export default class NViewport {
 		const prevPointerAwareObjIds = new Set(this._pointerAwareObjIds);
 		const currentPointerAwareObjIds = new Set();
 		const newlyPointerAwareObjs = [];
+		
+		const isInBounds = this.isInBounds(this._pointerPos);
+
 		for (const uuid of this._mouseListeningObjIdsSorted) {
 			const obj = this._allObjs[uuid];
 
@@ -539,7 +542,7 @@ export default class NViewport {
 				continue;
 			}
 
-			if (obj.intersects(this._pointerPos)) {
+			if (obj.intersects(this._pointerPos, isInBounds)) {
 				currentPointerAwareObjIds.add(uuid);
 				// is newly aware
 				if (!prevPointerAwareObjIds.has(uuid)) {
@@ -715,11 +718,11 @@ export default class NViewport {
 		this._zoomUpdatePanCenter(prevZoomFactor, zoomCenter, quiet);
 	}
 
-	isInBounds(point){
+	isInBounds(point) {
 		return point.withinRect(this._activeAreaCorners[0]);
 	}
 
-	clampToBounds(point, padding){
+	clampToBounds(point, padding) {
 		return point.clamp1p(this._activeAreaCorners[0].addp(padding));
 	}
 
