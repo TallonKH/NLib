@@ -16,12 +16,36 @@ export function lerp(min, max, alpha) {
 	return max * alpha + min * (1 - alpha);
 }
 
-easingFuncs = {"quadratic":quadratic, "cubic":easeCubic, "sine":easeSine}
-export function ease(x, method){
-	return easingFuncs[method](x);
+export function step(edge, value) {
+	return value < edge ? 0 : 1;
 }
 
-export function easeQuad(x){
+export function smoothStep(minEdge, maxEdge, value, easingFunc = hermite) {
+	return easingFunc(clamp(value, minEdge, maxEdge) / (maxEdge - minEdge));
+}
+
+
+export const easingFuncs = {
+	linear: easeLinear,
+	hermite: easeHermite,
+	quadratic: easeQuadratic,
+	cubic: easeCubic,
+	sine: easeSine
+};
+
+export function ease(x, methodName) {
+	return easingFuncs[methodName](x);
+}
+
+export function easeLinear(x) {
+	return x;
+}
+
+export function easeHermite(x) {
+	return x * x * (3 - 2 * x);
+}
+
+export function easeQuadratic(x) {
 	return x < 0.5 ? (2 * x * x) : (1 - pow(-2 * x + 2, 2) * 0.5);
 }
 
