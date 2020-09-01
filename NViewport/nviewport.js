@@ -21,6 +21,7 @@ export default class NViewport {
 		fittingMode = "shrink",
 		activeBackgroundClass = VPBackground,
 		activeAreaPadding = new NPoint(100, 100),
+		targetTickrate = 60,
 	} = {}) {
 		this._container;
 		this._canvas;
@@ -28,7 +29,7 @@ export default class NViewport {
 		this._setupDone = false;
 		this._redrawQueued = false;
 
-		this.targetTickrate = 60;
+		this._targetTickrate = targetTickrate;
 
 		this._pixelRatio = window.devicePixelRatio;
 
@@ -406,7 +407,7 @@ export default class NViewport {
 		};
 
 		function loopIteration() {
-			const targetDelay = 1000 / self.targetTickrate;
+			const targetDelay = 1000 / self._targetTickrate;
 			currentTime = Date.now();
 			deltaTime += currentTime - lastTime;
 			if (deltaTime > targetDelay) {
@@ -421,7 +422,7 @@ export default class NViewport {
 				overflowTime = overflowRemainder;
 
 				let extraTicks = diffQuotient + overflowQuotient;
-				self._onTick(deltaTime * extraTicks / 1000 + 1, extraTicks, overflowTime);
+				self._onTick(deltaTime * extraTicks / 1000, extraTicks, overflowTime);
 				requestNext();
 				deltaTime = 0;
 			} else {
