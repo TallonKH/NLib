@@ -384,8 +384,11 @@ export default class NViewport {
 	// tickMultiplier = tick-based equiv of deltaTime
 	// overflow = accidental ms delay since last tick
 	_onTick(deltaT, tickMultiplier, overflow) {
+		// listeners
 		Object.values(this._tickListeners).forEach(f => f(this, deltaT, tickMultiplier, overflow));
-		for (const uuid of this._mouseListeningObjIdsSorted) {
+
+		// tickable objs
+		for (const uuid of this._tickableObjIds) {
 			const obj = this._allObjs[uuid];
 			obj.onTick(deltaT, tickMultiplier, overflow);
 		}
