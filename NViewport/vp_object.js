@@ -11,13 +11,15 @@ export default class VPObject {
         position = NPoint.ZERO,
         drawable = true,
         mouseListening = false,
-        zOrder = 0
+        zOrder = 0,
+        tickable = false,
     } = {}) {
         this._vp = vp;
         this._uuid = idCounter++;
 
         this._position = position;
         this._drawable = drawable;
+        this._tickable = tickable;
         this._mouseListening = mouseListening;
         this._zOrder = zOrder;
         this._zSubOrder = 0;
@@ -40,6 +42,12 @@ export default class VPObject {
     }
 
     static globalInit() {
+
+    }
+
+    // tickMultiplier = tick-based equiv of deltaTime
+	// overflow = accidental ms delay since last tick
+    onTick(deltaT, tickMultiplier, overflow){
 
     }
 

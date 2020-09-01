@@ -107,6 +107,7 @@ export default class NViewport {
 		this._drawRegisterCounter = 0
 		this._drawnObjIds = new Set();
 		this._drawnObjIdsSorted = [];
+		this._tickableObjIds = new Set();
 		this._mouseListeningObjIds = new Set();
 		this._mouseListeningObjIdsSorted = [];
 		/** objects that the pointer is overlapping */
@@ -228,6 +229,9 @@ export default class NViewport {
 		if (obj._mouseListening) {
 			this.registerMouseListeningObj(obj);
 		}
+		if(obj._tickable){
+			this.registerTickableObj(obj);
+		}
 		this.queueRedraw();
 	}
 
@@ -235,6 +239,10 @@ export default class NViewport {
 		obj._drawRegisterNum = this._drawRegisterCounter++;
 		this._drawnObjIds.add(obj._uuid);
 		insertSorted(this._drawnObjIdsSorted, obj._uuid, this.reverseDepthSorter);
+	}
+
+	registerTickableObj(obj) {
+		this._tickableObjIds.add(obj._uuid);
 	}
 
 	registerMouseListeningObj(obj) {
@@ -269,6 +277,10 @@ export default class NViewport {
 	unregisterDrawnObj(obj) {
 		this._drawnObjIds.delete(obj._uuid);
 		removeSorted(this._drawnObjIdsSorted, obj._uuid, this.reverseDepthSorter);
+	}
+
+	unregisterTickableObj(obj) {
+		this._tickableObjIds.delete(obj._uuid);
 	}
 
 	unregisterMouseListeningObj(obj) {
@@ -344,6 +356,7 @@ export default class NViewport {
 		obj.onForget();
 		delete this._allObjs[obj._uuid];
 		this.unregisterDrawnObj(obj);
+		this.unregisterTickableObj(obj);
 		this.unregisterMouseListeningObj(obj);
 		this.unregisterPointerAwareObj(obj);
 		this.unregisterPointerOverlappingObj(obj);
@@ -364,10 +377,14 @@ export default class NViewport {
 		Object.values(this._resizeListeners).forEach(f => f(e));
 	}
 
-	// tickMultiplier = integer equiv of deltaTime
+	// tickMultiplier = tick-based equiv of deltaTime
 	// overflow = accidental ms delay since last tick
 	_onTick(deltaT, tickMultiplier, overflow) {
 		Object.values(this._tickListeners).forEach(f => f(this, deltaT, tickMultiplier, overflow));
+		for (const uuid of this._mouseListeningObjIdsSorted) {
+			const obj = this._allObjs[uuid];
+			obj.onTick(deltaT, tickMultiplier, overflow);
+		}
 	}
 
 	_setupLoop() {
