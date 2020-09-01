@@ -75,6 +75,26 @@ export default class NPoint {
 		);
 	}
 
+	static sum(points){
+		let x = 0;
+		let y = 0;
+		for(const point of points){
+			x += point.x;
+			y += point.y;
+		}
+		return new NPoint(x, y);
+	}
+
+	static product(points){
+		let x = 1;
+		let y = 1;
+		for(const point of points){
+			x *= point.x;
+			y *= point.y;
+		}
+		return new NPoint(x, y);
+	}
+
 	add1(other) {
 		return new NPoint(this.x + other, this.y + other);
 	}
