@@ -19,7 +19,7 @@ export default class NViewport {
 		baseActiveDims = new NPoint(500, 500),
 		activeAreaBounded = false,
 		fittingMode = "shrink",
-		backgroundClass = VPBackground,
+		activeBackgroundClass = VPBackground,
 		activeAreaPadding = new NPoint(100, 100),
 	} = {}) {
 		this._container;
@@ -42,7 +42,8 @@ export default class NViewport {
 		 * Works in conjunction with minZoomFactor (if zoomFactor == 1, not all 4 borders can be visible at once)
 		 */
 		this._activeAreaPadding = activeAreaPadding;
-		this._activeBackground = new backgroundClass(this);
+		this._activeBackgroundClass = activeBackgroundClass;
+		this._activeBackground;
 		self._fittingScaleFactor;
 		self._zoomFactorFitted; // locked to fittingScaleFactor * zoomFactor
 		this._zoomCenterMode = zoomCenterMode;
@@ -89,6 +90,8 @@ export default class NViewport {
 		};
 		this._cursorPriorities = ["none", "not-allowed", "help", "grabbing", "grab", "move", "pointer", "crosshair", "default"];
 
+		this._resizeObserver;
+		
 		// size of the literal canvas element
 		this._divDims = NPoint.ZERO;
 		// center of the literal canvas element
@@ -131,6 +134,7 @@ export default class NViewport {
 		this._postPointerMoveListeners = {};
 		this._postMouseWheelListeners = {};
 		this._tickListeners = {};
+		this._resizeListeners = {};
 
 		// is the mouse over the viewport?
 		this._pointerWithinElement = false;
@@ -161,6 +165,7 @@ export default class NViewport {
 			this._setupScrollLogic();
 			this._setupMouseListeners();
 			this._setupKeyListeners();
+			this._activeBackground = new this._activeBackgroundClass(this);
 			this.registerObj(this._activeBackground);
 			this._setupDone = true;
 		}
@@ -355,12 +360,14 @@ export default class NViewport {
 		}
 	}
 
+	_onResize(e) {
+		Object.values(this._resizeListeners).forEach(f => f(e));
+	}
+
 	// tickMultiplier = integer equiv of deltaTime
 	// overflow = accidental ms delay since last tick
 	_onTick(deltaT, tickMultiplier, overflow) {
-		if (this._tickListeners) {
-			Object.values(this._tickListeners).forEach(f => f(this, deltaT, tickMultiplier, overflow));
-		}
+		Object.values(this._tickListeners).forEach(f => f(this, deltaT, tickMultiplier, overflow));
 	}
 
 	_setupLoop() {
@@ -415,31 +422,31 @@ export default class NViewport {
 	__redrawUnbound() {
 		if (this._setupDone) {
 			this._redrawQueued = false;
-			this.ctx.resetTransform();
-			this.ctx.clearRect(0, 0, this._canvasDims.x, this._canvasDims.y);
+			this._ctx.resetTransform();
+			this._ctx.clearRect(0, 0, this._canvasDims.x, this._canvasDims.y);
 
 			// matrix version of viewportToDivSpace
 			const scale = this._zoomFactorFitted;
 			const xOffset = this._canvasCenter.x + this._panCenter.x * this._pixelRatio;
 			const yOffset = this._canvasCenter.y + this._panCenter.y * this._pixelRatio;
-			this.ctx.setTransform(scale, 0, 0, scale, xOffset, yOffset);
+			this._ctx.setTransform(scale, 0, 0, scale, xOffset, yOffset);
 
 			if (this._activeAreaBounded) {
-				this.ctx.save();
-				this.ctx.beginPath();
+				this._ctx.save();
+				this._ctx.beginPath();
 				const dims = this._baseActiveAreaDims;
-				this.ctx.rect(-(dims.x >> 1), -(dims.y >> 1), dims.x, dims.y);
-				this.ctx.closePath();
-				this.ctx.clip();
+				this._ctx.rect(-(dims.x >> 1), -(dims.y >> 1), dims.x, dims.y);
+				this._ctx.closePath();
+				this._ctx.clip();
 			}
 
 			for (const uuid of this._drawnObjIdsSorted) {
 				const obj = this._allObjs[uuid];
-				obj.draw(this.ctx);
+				obj.draw(this._ctx);
 			}
 
 			if (this._activeAreaBounded) {
-				this.ctx.restore();
+				this._ctx.restore();
 			}
 
 			this.onRedraw();
@@ -460,7 +467,7 @@ export default class NViewport {
 		this._canvas.style.height = "100%";
 		this._canvas.style.background = "transparent";
 		this._container.appendChild(this._canvas);
-		this.ctx = this._canvas.getContext("2d");
+		this._ctx = this._canvas.getContext("2d");
 	}
 
 	divToViewportSpace(npoint) {
@@ -474,7 +481,7 @@ export default class NViewport {
 
 	_setupScrollLogic() {
 		const self = this;
-		self.resizeObserver = new ResizeObserver(function (e) {
+		self._resizeObserver = new ResizeObserver(function (e) {
 			const resizeRect = e[0].contentRect;
 			self._divDims = new NPoint(resizeRect.width, resizeRect.height);
 			self._divCenter = self._divDims.operate(c => c >> 1);
@@ -487,10 +494,10 @@ export default class NViewport {
 			const scaleDims = self._canvasDims.dividep(self._baseActiveAreaDims);
 			self._fittingScaleFactor = self._fittingMode === "fill" ? scaleDims.greater() : scaleDims.lesser();
 			self._zoomFactorFitted = self._fittingScaleFactor * self._zoomFactor;
-
+			self._onResize(e);
 			self.queueRedraw();
 		});
-		self.resizeObserver.observe(this._container);
+		self._resizeObserver.observe(this._container);
 	}
 
 	_pointerUpdated(e) {

@@ -1,3 +1,5 @@
+// this code has been modified from its original form
+
 function clamp(val, min=0, max=1){
   return Math.max(min, Math.min(val, max));
 }
@@ -56,12 +58,9 @@ export function labDelta(labA, labB) {
   const c2 = Math.sqrt(labB[1] * labB[1] + labB[2] * labB[2]);
   const deltaC = c1 - c2;
   let deltaH = deltaA * deltaA + deltaB * deltaB - deltaC * deltaC;
-  deltaH = deltaH < 0 ? 0 : Math.sqrt(deltaH);
-  const sc = 1.0 + 0.045 * c1;
-  const sh = 1.0 + 0.015 * c1;
-  const deltaLKlsl = deltaL / (1.0);
-  const deltaCkcsc = deltaC / (sc);
-  const deltaHkhsh = deltaH / (sh);
-  const i = deltaLKlsl * deltaLKlsl + deltaCkcsc * deltaCkcsc + deltaHkhsh * deltaHkhsh;
+  deltaH = deltaH <= 0 ? 0 : Math.sqrt(deltaH);
+  const deltaCkcsc = deltaC / (1.0 + 0.045 * c1);
+  const deltaHkhsh = deltaH / (1.0 + 0.015 * c1);
+  const i = deltaL * deltaL + deltaCkcsc * deltaCkcsc + deltaHkhsh * deltaHkhsh;
   return Math.max(0, Math.sqrt(i));
 }
