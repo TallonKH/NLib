@@ -5,10 +5,10 @@ import NPoint from "../npoint.js";
 export default class VPBackground extends VPObject {
     constructor(viewport, {} = {}) {
         super(viewport, {
-            "mouseListening": true,
-            "zOrder": -65536
-        })
-        this.colorHex = "#1a1a1a"
+            mouseListening: true,
+            zOrder: -65536
+        });
+        this.colorHex = "#1a1a1a";
         this.color = NColor.fromHex(this.colorHex);
     }
 

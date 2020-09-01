@@ -5,9 +5,9 @@ import NPoint from "../../npoint.js";
 export default class GrabObj extends VPObject {
     constructor(viewport, position, {} = {}) {
         super(viewport, {
-            "mouseListening": true,
-            "position": position
-        })
+            mouseListening: true,
+            position: position,
+        });
         this.setSize(25);
         this.colorHex = "#aaa"
         this.color = NColor.fromHex(this.colorHex);

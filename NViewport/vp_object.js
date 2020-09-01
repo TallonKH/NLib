@@ -46,8 +46,8 @@ export default class VPObject {
     }
 
     // tickMultiplier = tick-based equiv of deltaTime
-	// overflow = accidental ms delay since last tick
-    onTick(deltaT, tickMultiplier, overflow){
+    // overflow = accidental ms delay since last tick
+    onTick(deltaT, tickMultiplier, overflow) {
 
     }
 
