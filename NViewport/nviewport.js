@@ -422,7 +422,8 @@ export default class NViewport {
 				overflowTime = overflowRemainder;
 
 				let extraTicks = diffQuotient + overflowQuotient;
-				self._onTick(deltaTime * extraTicks / 1000, extraTicks, overflowTime);
+				// self._onTick(deltaTime * extraTicks / 1000, extraTicks, overflowTime);
+				self._onTick(deltaTime / 1000, extraTicks, overflowTime);
 				requestNext();
 				deltaTime = 0;
 			} else {
