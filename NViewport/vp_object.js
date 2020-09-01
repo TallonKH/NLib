@@ -41,15 +41,11 @@ export default class VPObject {
         this._suggestedCursors = {};
     }
 
-    static globalInit() {
-
-    }
+    static globalInit() {}
 
     // tickMultiplier = tick-based equiv of deltaTime
     // overflow = accidental ms delay since last tick
-    onTick(deltaT, tickMultiplier, overflow) {
-
-    }
+    onTick(deltaT, tickMultiplier, overflow) {}
 
     setZOrder(newOrder) {
         removeSorted(this._vp._drawnObjIdsSorted, this._uuid, this._vp.reverseDepthSorter);

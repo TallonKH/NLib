@@ -91,7 +91,7 @@ export default class NViewport {
 		this._cursorPriorities = ["none", "not-allowed", "help", "grabbing", "grab", "move", "pointer", "crosshair", "default"];
 
 		this._resizeObserver;
-		
+
 		// size of the literal canvas element
 		this._divDims = NPoint.ZERO;
 		// center of the literal canvas element
@@ -159,6 +159,7 @@ export default class NViewport {
 		this._redraw = this.__redrawUnbound.bind(this);
 	}
 
+	/** for most cases, no not override. Override onSetup instead. */
 	setup(parentDiv) {
 		if (!this._setupDone) {
 			this._setupElements();
@@ -169,8 +170,11 @@ export default class NViewport {
 			this._activeBackground = new this._activeBackgroundClass(this);
 			this.registerObj(this._activeBackground);
 			this._setupDone = true;
+			this.onSetup();
 		}
 	}
+
+	onSetup() {}
 
 	recenter() {
 		this.setPanCenter(NPoint.ZERO);
@@ -229,7 +233,7 @@ export default class NViewport {
 		if (obj._mouseListening) {
 			this.registerMouseListeningObj(obj);
 		}
-		if(obj._tickable){
+		if (obj._tickable) {
 			this.registerTickableObj(obj);
 		}
 		this.queueRedraw();
