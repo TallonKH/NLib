@@ -1,5 +1,6 @@
 import {
-	clamp
+	clamp,
+	lerp
 } from "./nmath.js";
 
 export default class NPoint {
@@ -75,20 +76,20 @@ export default class NPoint {
 		);
 	}
 
-	static sum(points){
+	static sum(points) {
 		let x = 0;
 		let y = 0;
-		for(const point of points){
+		for (const point of points) {
 			x += point.x;
 			y += point.y;
 		}
 		return new NPoint(x, y);
 	}
 
-	static product(points){
+	static product(points) {
 		let x = 1;
 		let y = 1;
-		for(const point of points){
+		for (const point of points) {
 			x *= point.x;
 			y *= point.y;
 		}
@@ -286,6 +287,13 @@ export default class NPoint {
 
 	nearlyEqual(other, threshold) {
 		return Math.abs(this.x - other.x) <= threshold && Math.abs(this.y - other.y) <= threshold;
+	}
+
+	static lerp(a, b, factor) {
+		return new NPoint(
+			lerp(a.x, b.x, factor),
+			lerp(a.y, b.y, factor)
+		);
 	}
 
 	static same(...pts) {

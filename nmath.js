@@ -11,9 +11,9 @@ export function absMin(a, b) {
 	return clamp(a, -b, b);
 }
 
-/** linear interpolate from min to max */
-export function lerp(min, max, alpha) {
-	return max * alpha + min * (1 - alpha);
+/** linear interpolate from a to b */
+export function lerp(a, b, factor) {
+	return b * factor + a * (1 - factor);
 }
 
 export function step(edge, value) {

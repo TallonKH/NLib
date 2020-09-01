@@ -28,7 +28,8 @@ export default class NViewport {
 
 		this._setupDone = false;
 		this._redrawQueued = false;
-
+		
+		/** ignored in simple loop */
 		this._targetTickrate = targetTickrate;
 
 		this._pixelRatio = window.devicePixelRatio;
@@ -393,9 +394,25 @@ export default class NViewport {
 			const obj = this._allObjs[uuid];
 			obj.onTick(deltaT, tickMultiplier, overflow);
 		}
+		if(this._redrawQueued){
+			// this function is already inside an animation frame, so don't request another for drawing
+			this.__redrawUnbound();
+		}
 	}
 
-	_setupLoop() {
+	_setupSimpleLoop(){
+		const self = this;
+		let lastTime = Date.now();
+		function loopIteration(){
+			const currentTime = Date.now();
+			self._onTick((currentTime - lastTime) * 0.001);
+			lastTime = currentTime;
+			window.requestAnimationFrame(loopIteration, null, null);
+		}
+		loopIteration();
+	}
+
+	_setupComplexLoop() {
 		const self = this;
 		let currentTime = Date.now();
 		let lastTime = currentTime;
@@ -752,12 +769,12 @@ export default class NViewport {
 		this._zoomUpdatePanCenter(prevZoomFactor, zoomCenter, quiet);
 	}
 
-	isInBounds(point) {
-		return point.withinRect(this._activeAreaCorners[0]);
+	isInBounds(point, padding=NPoint.ZERO) {
+		return point.withinRect(this._activeAreaCorners[0].add1(padding));
 	}
 
-	clampToBounds(point, padding) {
-		return point.clamp1p(this._activeAreaCorners[0].addp(padding));
+	clampToBounds(point, padding=NPoint.ZERO) {
+		return point.clamp1p(this._activeAreaCorners[0].add1(padding));
 	}
 
 	scrollZoomCounter(delta, quiet = false) {

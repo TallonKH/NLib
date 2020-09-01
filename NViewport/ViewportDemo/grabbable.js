@@ -62,7 +62,7 @@ export default class GrabObj extends VPObject {
         super.onDragged(pointerMoveEvent);
         this._position = this._vp.clampToBounds(
             this.dragInitialPosition.addp(this._vp._pointerDragDelta),
-            new NPoint(-this._size)
+            -this._size
         );
         this._vp.queueRedraw();
     }
