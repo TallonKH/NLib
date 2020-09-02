@@ -234,6 +234,19 @@ export default class NPoint {
 		]
 	}
 
+	reflect(normal) {
+		return this.subtractp(normal.multiply1(NPoint.dotProduct(this, normal) * 2));
+	}
+
+	project(tangent){
+		const normTan = tangent.normalized();
+		return normTan.multiply1(NPoint.dotProduct(this, normTan));
+	}
+
+	reject(tangent){
+		return this.subtractp(this.project(tangent));
+	}
+
 	withinRect(cornerA, cornerB = null) {
 		if (cornerB === null) {
 			const mx = Math.abs(cornerA.x);
