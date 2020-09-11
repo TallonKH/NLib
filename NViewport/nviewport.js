@@ -770,7 +770,7 @@ export default class NViewport {
 	}
 
 	isInBounds(point, padding=NPoint.ZERO) {
-		return point.withinRect(this._activeAreaCorners[0].add1(padding));
+		return point.withinRect(this._activeAreaCorners[0].addp(padding));
 	}
 
 	clampToBounds(point, padding=NPoint.ZERO) {

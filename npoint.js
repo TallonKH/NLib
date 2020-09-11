@@ -256,7 +256,7 @@ export default class NPoint {
 
 		const lc = NPoint.min(cornerA, cornerB);
 		const gc = NPoint.max(cornerA, cornerB);
-		return (this.x <= gc.x) && (this.x >= -lc.x) && (this.y <= gc.y) && (this.y >= -lc.y);
+		return (this.x <= gc.x) && (this.x >= lc.x) && (this.y <= gc.y) && (this.y >= lc.y);
 	}
 
 	rotate(rads) {
