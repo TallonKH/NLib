@@ -771,7 +771,7 @@ export default class NViewport {
 	}
 
 	isInBounds(point, padding = NPoint.ZERO) {
-		return this._activeAreaBounded && point.withinRect(this._activeAreaCorners[0].addp(padding));
+		return (!this._activeAreaBounded) || point.withinRect(this._activeAreaCorners[0].addp(padding));
 	}
 
 	clampToBounds(point, padding = NPoint.ZERO) {
