@@ -39,6 +39,8 @@ export default class NViewport {
 		this._activeAreaCorners; // assigned by setBaseActiveDims
 		this.setBaseActiveDims(baseActiveDims);
 		this._fittingMode = fittingMode; // shrink, fill
+		this._visibleAreaMinCorner;
+		this._visibleAreaMaxCorner;
 		/**
 		 * Padding is in element space pixels, not viewport space nor canvas space.
 		 * Works in conjunction with minZoomFactor (if zoomFactor == 1, not all 4 borders can be visible at once)
@@ -171,7 +173,13 @@ export default class NViewport {
 			this._setupKeyListeners();
 			this._activeBackground = new this._activeBackgroundClass(this);
 			this.registerObj(this._activeBackground);
-			this._setupDone = true;
+			window.setTimeout(function(){
+				const pc = this._panCenter;
+				this.setPanCenter(pc.add1(100));
+				this.setPanCenter(pc);
+				this._setupDone = true;
+				this.__redrawUnbound();
+			}.bind(this), 0);
 			this.onSetup();
 		}
 	}
@@ -794,6 +802,8 @@ export default class NViewport {
 		}
 		if (!this._panCenter.equals(newPanCenter)) {
 			this._panCenter = newPanCenter;
+			this._visibleAreaMinCorner = this.divToViewportSpace(NPoint.ZERO);
+			this._visibleAreaMaxCorner = this.divToViewportSpace(this._canvasDims);
 			if (!quiet) {
 				this._pointerUpdated();
 			}
