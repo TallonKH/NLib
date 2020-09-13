@@ -27,7 +27,7 @@ export default class NViewport {
 		this._canvas;
 
 		this._setupDone = false;
-		this._redrawQueued = false;
+		this._isActive = true;
 
 		/** ignored in simple loop */
 		this._targetTickrate = targetTickrate;
@@ -160,7 +160,11 @@ export default class NViewport {
 			return this.depthSorter(bid, aid);
 		}.bind(this);
 
-		this._redraw = this.__redrawUnbound.bind(this);
+		// this._redraw = this.__redrawUnbound.bind(this);
+		this._update = this.__updateUnbound.bind(this);
+		this._pendingUpdate = false;
+		this._pendingRedraw = false;
+		this._pendingResizeUpdate = null;
 	}
 
 	/** for most cases, no not override. Override onSetup instead. */
@@ -173,12 +177,12 @@ export default class NViewport {
 			this._setupKeyListeners();
 			this._activeBackground = new this._activeBackgroundClass(this);
 			this.registerObj(this._activeBackground);
-			window.setTimeout(function(){
+			window.setTimeout(function () {
 				const pc = this._panCenter;
 				this.setPanCenter(pc.add1(100));
 				this.setPanCenter(pc);
 				this._setupDone = true;
-				this.__redrawUnbound();
+				this.queueRedraw();
 			}.bind(this), 0);
 			this.onSetup();
 		}
@@ -402,10 +406,10 @@ export default class NViewport {
 			const obj = this._allObjs[uuid];
 			obj.onTick(deltaT, tickMultiplier, overflow);
 		}
-		if (this._redrawQueued) {
-			// this function is already inside an animation frame, so don't request another for drawing
-			this.__redrawUnbound();
-		}
+		// if (this._pendingRedraw) {
+		// 	// this function is already inside an animation frame, so don't request another for drawing
+		// 	// this._redraw();
+		// }
 	}
 
 	_setupSimpleLoop() {
@@ -416,6 +420,7 @@ export default class NViewport {
 			const currentTime = Date.now();
 			self._onTick((currentTime - lastTime) * 0.001);
 			lastTime = currentTime;
+			self.request
 			window.requestAnimationFrame(loopIteration, null, null);
 		}
 		loopIteration();
@@ -461,19 +466,67 @@ export default class NViewport {
 		loopIteration();
 	}
 
-	queueRedraw() {
-		if (!this._redrawQueued) {
-			this._redrawQueued = true;
-			window.requestAnimationFrame(this._redraw);
-			// setTimeout(_ => this._redraw, 0);
+	queueUpdate() {
+		if (!this._pendingUpdate) {
+			this._pendingUpdate = true;
+			window.requestAnimationFrame(this._update);
 		}
 	}
 
+	queueRedraw() {
+		this._pendingRedraw = true;
+		this.queueUpdate();
+	}
 
+	queueResizeUpdate(event) {
+		this._pendingResizeUpdate = event;
+		this.queueUpdate();
+	}
 
-	__redrawUnbound() {
+	__updateUnbound() {
+		if (this._pendingResizeUpdate) {
+			const evnt = this._pendingResizeUpdate;
+			this._resized(evnt);
+			this._pendingResizeUpdate = null;
+
+			this._pendingRedraw = true;
+		}
+		if (this._pendingRedraw) {
+			this._pendingRedraw = false;
+			this._redraw();
+		}
+		this._pendingUpdate = false;
+	}
+
+	_resized(e) {
+		const resizeRect = e[0].contentRect;
+		this._isActive = !(resizeRect.height <= 5 || resizeRect.width <= 5);
+		if (!this._isActive) {
+			return;
+		}
+		this._divDims = new NPoint(resizeRect.width, resizeRect.height).clamp4(0, window.innerWidth, 0, window.innerHeight);
+		// this._divCenter = this._divDims.operate(c => c >> 1);
+		this._divCenter = this._divDims.multiply1(0.5);
+
+		this._canvasDims = this._divDims.multiply1(this._pixelRatio);
+		this._canvasCenter = this._canvasDims.operate(c => c >> 1);
+		this._canvas.width = this._canvasDims.x;
+		this._canvas.height = this._canvasDims.y;
+
+		const scaleDims = this._canvasDims.dividep(this._baseActiveAreaDims);
+		this._fittingScaleFactor = this._fittingMode === "fill" ? scaleDims.greater() : scaleDims.lesser();
+		this._zoomFactorFitted = this._fittingScaleFactor * this._zoomFactor;
+		this._viewSpaceUpdated();
+		this._onResize(e);
+	}
+
+	_viewSpaceUpdated(){
+		this._visibleAreaMinCorner = this.divToViewportSpace(NPoint.ZERO);
+		this._visibleAreaMaxCorner = this.divToViewportSpace(this._canvasDims);
+	}
+
+	_redraw() {
 		if (this._setupDone) {
-			this._redrawQueued = false;
 			this._ctx.resetTransform();
 			this._ctx.clearRect(0, 0, this._canvasDims.x, this._canvasDims.y);
 
@@ -510,13 +563,18 @@ export default class NViewport {
 	_setupElements() {
 		this._container = document.createElement("div");
 		this._container.classList.add("vpContainer");
-		this._container.style.width = "100%";
 		this._container.style.height = "100%";
-		this._container.style.background = "transparent";
+		this._container.style.lineHeight = 0;
+		this._container.style.margin = 0;
+		this._container.style.padding = 0;
+		this._container.style.background = "#200";
 
 		this._canvas = document.createElement("canvas");
 		this._canvas.style.width = "100%";
 		this._canvas.style.height = "100%";
+		this._canvas.style.lineHeight = 0;
+		this._container.style.margin = 0;
+		this._container.style.padding = 0;
 		this._canvas.style.background = "transparent";
 		this._container.appendChild(this._canvas);
 		this._ctx = this._canvas.getContext("2d");
@@ -534,21 +592,8 @@ export default class NViewport {
 	_setupScrollLogic() {
 		const self = this;
 		self._resizeObserver = new ResizeObserver(function (e) {
-			const resizeRect = e[0].contentRect;
-			self._divDims = new NPoint(resizeRect.width, resizeRect.height);
-			self._divCenter = self._divDims.operate(c => c >> 1);
-
-			self._canvasDims = self._divDims.multiply1(self._pixelRatio);
-			self._canvasCenter = self._canvasDims.operate(c => c >> 1);
-			self._canvas.width = self._canvasDims.x;
-			self._canvas.height = self._canvasDims.y;
-
-			const scaleDims = self._canvasDims.dividep(self._baseActiveAreaDims);
-			self._fittingScaleFactor = self._fittingMode === "fill" ? scaleDims.greater() : scaleDims.lesser();
-			self._zoomFactorFitted = self._fittingScaleFactor * self._zoomFactor;
-			self._onResize(e);
-			self.queueRedraw();
-		});
+			self.queueResizeUpdate(e);
+		}.bind(self));
 		self._resizeObserver.observe(this._container);
 	}
 
@@ -802,13 +847,12 @@ export default class NViewport {
 		}
 		if (!this._panCenter.equals(newPanCenter)) {
 			this._panCenter = newPanCenter;
-			this._visibleAreaMinCorner = this.divToViewportSpace(NPoint.ZERO);
-			this._visibleAreaMaxCorner = this.divToViewportSpace(this._canvasDims);
 			if (!quiet) {
 				this._pointerUpdated();
 			}
 			this.queueRedraw();
 		}
+		this._viewSpaceUpdated();
 	}
 
 	scrollPanCenter(deltaX, deltaY, quiet = false) {
@@ -822,7 +866,9 @@ export default class NViewport {
 	_setupMouseListeners() {
 		const self = this;
 		this._container.addEventListener("pointerenter", function (e) {
-			self._pointerWithinElement = true;
+			if (self._isActive) {
+				self._pointerWithinElement = true;
+			}
 		});
 
 		this._container.addEventListener("pointerleave", function (e) {
@@ -830,89 +876,95 @@ export default class NViewport {
 		});
 
 		this._container.addEventListener("wheel", function (e) {
-			self._preOnMouseWheel(e);
-			for (const uuid of self._pointerAwareObjIdsSorted) {
-				const obj = self._allObjs[uuid];
-				if (obj.ignoreWheelEvent(e)) {
-					continue;
+			if (self._isActive) {
+				self._preOnMouseWheel(e);
+				for (const uuid of self._pointerAwareObjIdsSorted) {
+					const obj = self._allObjs[uuid];
+					if (obj.ignoreWheelEvent(e)) {
+						continue;
+					}
+					obj.onWheel(e);
+					if (obj.blockWheelEvent(e)) {
+						break;
+					}
 				}
-				obj.onWheel(e);
-				if (obj.blockWheelEvent(e)) {
-					break;
-				}
+				self._postOnMouseWheel(e);
+				e.preventDefault();
 			}
-			self._postOnMouseWheel(e);
-			e.preventDefault();
 		});
 
 		this._container.addEventListener("pointerdown", function (e) {
-			self.queueRedraw();
-			self._mouseElemDownPos = self._pointerElemPos;
-			self._mouseDownPos = self.divToViewportSpace(self._mouseElemDownPos);
-			self._mouseDown = true;
-			self._preOnMouseDown(e);
-			for (const uuid of self._pointerAwareObjIdsSorted) {
-				const obj = self._allObjs[uuid];
-				if (obj.ignoreClickEvent(e)) {
-					continue;
+			if (self._isActive) {
+				self._mouseElemDownPos = self._pointerElemPos;
+				self._mouseDownPos = self.divToViewportSpace(self._mouseElemDownPos);
+				self._mouseDown = true;
+				self._preOnMouseDown(e);
+				for (const uuid of self._pointerAwareObjIdsSorted) {
+					const obj = self._allObjs[uuid];
+					if (obj.ignoreClickEvent(e)) {
+						continue;
+					}
+					self.registerHeldObj(obj);
+					obj.onPressed(e);
+					if (obj.blockClickEvent(e)) {
+						break;
+					}
 				}
-				self.registerHeldObj(obj);
-				obj.onPressed(e);
-				if (obj.blockClickEvent(e)) {
-					break;
-				}
+				self._postOnMouseDown(e);
+				self._pointerUpdated();
+				e.preventDefault();
 			}
-			self._postOnMouseDown(e);
-			self._pointerUpdated();
-			e.preventDefault();
 		});
 
 		document.addEventListener("pointerup", function (e) {
-			self.queueRedraw();
-			self._preOnMouseUp(e);
-			self._mouseDown = false;
-			for (const uuid of self._pointerAwareObjIdsSorted) {
-				const obj = self._allObjs[uuid];
+			if (self._isActive) {
+				self._preOnMouseUp(e);
+				self._mouseDown = false;
+				for (const uuid of self._pointerAwareObjIdsSorted) {
+					const obj = self._allObjs[uuid];
 
-				if (obj.ignoreClickEvent(e)) {
-					continue;
+					if (obj.ignoreClickEvent(e)) {
+						continue;
+					}
+					obj.onMouseUp(e);
+					if (obj.blockClickEvent(e)) {
+						break;
+					}
 				}
-				obj.onMouseUp(e);
-				if (obj.blockClickEvent(e)) {
-					break;
-				}
-			}
 
-			const isDrag = self._pointerElemDragDistance >= self.nonDragThreshold;
-			if (!isDrag) {
-				self._preOnMouseClick(e);
-			}
-			for (const uuid of self._heldObjIdsSorted) {
-				const obj = self._allObjs[uuid];
-				obj.onUnpressed(e);
-				if (isDrag) {
-					obj.onDragEnded(e);
-				} else {
-					obj.onClicked(e);
+				const isDrag = self._pointerElemDragDistance >= self.nonDragThreshold;
+				if (!isDrag) {
+					self._preOnMouseClick(e);
 				}
-			}
-			self._pointerDragDistance = 0;
-			self._pointerDragMaxDelta = 0;
-			self._pointerElemDragDistance = 0;
+				for (const uuid of self._heldObjIdsSorted) {
+					const obj = self._allObjs[uuid];
+					obj.onUnpressed(e);
+					if (isDrag) {
+						obj.onDragEnded(e);
+					} else {
+						obj.onClicked(e);
+					}
+				}
+				self._pointerDragDistance = 0;
+				self._pointerDragMaxDelta = 0;
+				self._pointerElemDragDistance = 0;
 
-			self.unregisterAllHeldObjs();
-			self.unregisterAllDraggedObjs();
-			self._postOnMouseUp(e);
-			if (!isDrag) {
-				self._postOnMouseClick(e);
+				self.unregisterAllHeldObjs();
+				self.unregisterAllDraggedObjs();
+				self._postOnMouseUp(e);
+				if (!isDrag) {
+					self._postOnMouseClick(e);
+				}
+				self._pointerUpdated();
+				e.preventDefault();
 			}
-			self._pointerUpdated();
-			e.preventDefault();
 		});
 
 		document.addEventListener("pointermove", function (e) {
-			self._pointerUpdated(e);
-			e.preventDefault();
+			if (self._isActive) {
+				self._pointerUpdated(e);
+				e.preventDefault();
+			}
 		});
 	}
 
