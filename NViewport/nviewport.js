@@ -18,6 +18,7 @@ export default class NViewport {
 		zoomCenterMode = "pointer", //screen, pointer, origin
 		baseActiveDims = new NPoint(500, 500),
 		activeAreaBounded = false,
+		fittingBasis = "element",
 		fittingMode = "shrink",
 		activeBackgroundClass = VPBackground,
 		activeAreaPadding = new NPoint(100, 100),
@@ -38,6 +39,7 @@ export default class NViewport {
 		this._baseActiveAreaDims; // assigned by setBaseActiveDims
 		this._activeAreaCorners; // assigned by setBaseActiveDims
 		this.setBaseActiveDims(baseActiveDims);
+		this._fittingBasis = fittingBasis; // element, screen
 		this._fittingMode = fittingMode; // shrink, fill
 		this._visibleAreaMinCorner;
 		this._visibleAreaMaxCorner;
@@ -513,14 +515,32 @@ export default class NViewport {
 		this._canvas.width = this._canvasDims.x;
 		this._canvas.height = this._canvasDims.y;
 
-		const scaleDims = this._canvasDims.dividep(this._baseActiveAreaDims);
-		this._fittingScaleFactor = this._fittingMode === "fill" ? scaleDims.greater() : scaleDims.lesser();
+		let scaleDims;
+		switch(this._fittingBasis){
+			case "element":
+				scaleDims = this._canvasDims;
+				break;
+			case "window":
+				scaleDims = new NPoint(window.innerWidth, window.innerHeight);
+		}
+		scaleDims = scaleDims.dividep(this._baseActiveAreaDims);
+
+		switch (this._fittingMode) {
+			case "fill":
+				this._fittingScaleFactor = scaleDims.greater()
+				break;
+			case "shrink":
+				this._fittingScaleFactor = scaleDims.lesser()
+				break;
+			default:
+				this._fittingScaleFactor = 1;
+		}
 		this._zoomFactorFitted = this._fittingScaleFactor * this._zoomFactor;
 		this._viewSpaceUpdated();
 		this._onResize(e);
 	}
 
-	_viewSpaceUpdated(){
+	_viewSpaceUpdated() {
 		this._visibleAreaMinCorner = this.divToViewportSpace(NPoint.ZERO);
 		this._visibleAreaMaxCorner = this.divToViewportSpace(this._canvasDims);
 	}
