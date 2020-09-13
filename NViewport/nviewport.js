@@ -23,13 +23,14 @@ export default class NViewport {
 		activeBackgroundClass = VPBackground,
 		activeAreaPadding = new NPoint(100, 100),
 		targetTickrate = 60,
+		responsiveResize = true,
 	} = {}) {
 		this._container;
 		this._canvas;
 
 		this._setupDone = false;
 		this._isActive = true;
-
+		this._responsiveResize = responsiveResize;
 		/** ignored in simple loop */
 		this._targetTickrate = targetTickrate;
 
@@ -482,13 +483,17 @@ export default class NViewport {
 
 	queueResizeUpdate(event) {
 		this._pendingResizeUpdate = event;
-		this.queueUpdate();
+		if(this._responsiveResize){
+			this.__updateUnbound();
+		}else{
+			this.queueUpdate();
+		}
 	}
 
 	__updateUnbound() {
 		if (this._pendingResizeUpdate) {
 			const evnt = this._pendingResizeUpdate;
-			this._resized(evnt);
+			this._handleResize(evnt);
 			this._pendingResizeUpdate = null;
 
 			this._pendingRedraw = true;
@@ -500,7 +505,7 @@ export default class NViewport {
 		this._pendingUpdate = false;
 	}
 
-	_resized(e) {
+	_handleResize(e) {
 		const resizeRect = e[0].contentRect;
 		this._isActive = !(resizeRect.height <= 5 || resizeRect.width <= 5);
 		if (!this._isActive) {
