@@ -1,4 +1,4 @@
-import VPBackground from "./vp_background.js";
+import VPBackground from "./vp-background.js";
 import NPoint from "../npoint.js";
 import {
 	clamp
@@ -171,10 +171,12 @@ export default class NViewport {
 	}
 
 	/** for most cases, no not override. Override onSetup instead. */
-	setup(parentDiv) {
+	setup(parentDiv=null) {
 		if (!this._setupDone) {
 			this._setupElements();
-			parentDiv.appendChild(this._container);
+			if(parentDiv !== null){
+				parentDiv.appendChild(this._container);
+			}
 			this._setupScrollLogic();
 			this._setupMouseListeners();
 			this._setupKeyListeners();
@@ -189,6 +191,11 @@ export default class NViewport {
 			}.bind(this), 0);
 			this.onSetup();
 		}
+		return this;
+	}
+
+	setParent(parentDiv){
+		parentDiv.appendChild(this._container);
 	}
 
 	onSetup() {}

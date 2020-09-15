@@ -1,4 +1,4 @@
-import VPObject from "./vp_object.js";
+import VPObject from "./vp-object.js";
 import NColor from "../ncolor.js";
 import NPoint from "../npoint.js";
 
