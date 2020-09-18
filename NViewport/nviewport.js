@@ -558,7 +558,7 @@ export default class NViewport {
 
 	_viewSpaceUpdated() {
 		this._visibleAreaMinCorner = this.divToViewportSpace(NPoint.ZERO);
-		this._visibleAreaMaxCorner = this.divToViewportSpace(this._canvasDims);
+		this._visibleAreaMaxCorner = this.divToViewportSpace(this._divDims);
 	}
 
 	_redraw() {

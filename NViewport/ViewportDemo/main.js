@@ -2,6 +2,7 @@ import NPoint from "../../npoint.js";
 import NColor from "../../ncolor.js"
 import {lerp} from "../../nmath.js"
 import GrabObj from "./grabbable.js";
+import VisibleAreaMarker from "./visible-area-marker.js";
 import NViewport from "../nviewport.js";
 
 var viewport;
@@ -54,4 +55,6 @@ function main() {
         grabbable.setSize(100);
         viewport.registerObj(grabbable);
     }
+
+    viewport.registerObj(new VisibleAreaMarker(viewport));
 }
