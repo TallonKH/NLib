@@ -24,6 +24,7 @@ export default class NViewport {
 		activeAreaPadding = new NPoint(100, 100),
 		targetTickrate = 60,
 		responsiveResize = true,
+		pixelRatio = window.devicePixelRatio,
 	} = {}) {
 		this._container;
 		this._canvas;
@@ -34,7 +35,7 @@ export default class NViewport {
 		/** ignored in simple loop */
 		this._targetTickrate = targetTickrate;
 
-		this._pixelRatio = window.devicePixelRatio;
+		this.setPixelRatio(pixelRatio);
 
 		this._activeAreaBounded = activeAreaBounded; // if false, canvas is infinite in all directions
 		this._baseActiveAreaDims; // assigned by setBaseActiveDims
@@ -208,7 +209,10 @@ export default class NViewport {
 		this._baseActiveAreaDims = dims;
 		this._activeAreaCorners = dims.multiply1(0.5).mirrors();
 	}
-
+	
+	setPixelRatio(pixelRatio){
+		this._pixelRatio = pixelRatio;
+	}
 	_preOnMouseDown(mouseClickEvent) {
 		Object.values(this._preMouseDownListeners).forEach(f => f(this, mouseClickEvent));
 	}
@@ -564,7 +568,7 @@ export default class NViewport {
 
 			// matrix version of viewportToDivSpace
 			const scale = this._zoomFactorFitted;
-			const xOffset = this._canvasCenter.x + this._panCenter.x * this._pixelRatio;
+			const xOffset = this._canvasCenter.x + this._panCenter.x  * this._pixelRatio;
 			const yOffset = this._canvasCenter.y + this._panCenter.y * this._pixelRatio;
 			this._ctx.setTransform(scale, 0, 0, scale, xOffset, yOffset);
 
@@ -613,12 +617,11 @@ export default class NViewport {
 	}
 
 	divToViewportSpace(npoint) {
-		return npoint.subtractp(this._divCenter.addp(this._panCenter))
-			.multiply1(this._pixelRatio / this._zoomFactorFitted)
+		return npoint.subtractp(this._divCenter.addp(this._panCenter)).divide1(this._zoomFactorFitted / this._pixelRatio);
 	}
 
 	viewportToDivSpace(npoint) {
-		return npoint.divide1(this._pixelRatio / this._zoomFactorFitted).addp(this._divCenter.addp(this._panCenter));
+		return npoint.multiply1(this._zoomFactorFitted).addp(this._divCenter.addp(this._panCenter));
 	}
 
 	_setupScrollLogic() {

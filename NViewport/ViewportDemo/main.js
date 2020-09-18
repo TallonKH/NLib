@@ -14,14 +14,15 @@ window.onload = function () {
 function setupElements() {
     const rootDiv = document.getElementById("rootDiv");
     viewport = new NViewport({
-        minZoomFactor: 0.9,
+        minZoomFactor: 1,
         maxZoomFactor: 8,
         navigable: true,
         activeAreaBounded: true,
         zoomCenterMode: "pointer",
         fittingMode: "shrink",
         baseActiveDims: new NPoint(6000, 3750),
-        activeAreaPadding: new NPoint(50),
+        activeAreaPadding: new NPoint(0),
+        pixelRatio: 2,
     });
     viewport.setup(rootDiv);
     viewport._activeBackground.setColor(NColor.fromHex("#1a1a1a"));
