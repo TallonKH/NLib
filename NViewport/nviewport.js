@@ -882,7 +882,6 @@ export default class NViewport {
 			const clamping = corner.subtractp(this._divCenter).addp(this._activeAreaPadding).max1(0);
 			newPanCenter = newPanCenter.clamp1p(clamping);
 		}
-		console.log(newPanCenter);
 		// if (!this._panCenter.equals(newPanCenter)) {
 		this._panCenter = newPanCenter;
 		if (!quiet) {
