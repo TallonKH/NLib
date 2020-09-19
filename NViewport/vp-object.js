@@ -100,7 +100,7 @@ export default class VPObject {
     fillCircle(ctx) {
         ctx.beginPath();
         ctx.ellipse(
-            ~~this._position.x, ~~this._position.y,
+            this._position.x, this._position.y,
             this._size, this._size,
             0,
             0, 2 * Math.PI);
@@ -110,7 +110,7 @@ export default class VPObject {
     strokeCircle(ctx, scale = 1) {
         ctx.beginPath();
         ctx.ellipse(
-            ~~this._position.x, ~~this._position.y,
+            this._position.x, this._position.y,
             this._size * scale, this._size * scale,
             0,
             0, 2 * Math.PI);

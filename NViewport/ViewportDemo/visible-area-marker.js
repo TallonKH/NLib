@@ -7,6 +7,7 @@ export default class VisibleAreaMarker extends VPObject {
         super(viewport, {
             mouseListening: false,
             position: position,
+            zOrder: 10,
         });
         this.setSize(25);
         this.colorHex = "#f08070";
@@ -27,17 +28,16 @@ export default class VisibleAreaMarker extends VPObject {
         pos = this._vp._visibleAreaMinCorner;
         ctx.beginPath();
         ctx.ellipse(
-            ~~pos.x, ~~pos.y,
+            pos.x, pos.y,
             this._size, this._size,
             0,
             0, 2 * Math.PI);
         ctx.stroke();
 
         pos = this._vp._visibleAreaMaxCorner;
-        console.log(pos.toString());
         ctx.beginPath();
         ctx.ellipse(
-            ~~pos.x, ~~pos.y,
+            pos.x, pos.y,
             this._size, this._size,
             0,
             0, 2 * Math.PI);

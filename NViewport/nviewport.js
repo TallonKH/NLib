@@ -534,7 +534,7 @@ export default class NViewport {
 		let scaleDims;
 		switch(this._fittingBasis){
 			case "element":
-				scaleDims = this._canvasDims;
+				scaleDims = this._divDims;
 				break;
 			case "window":
 				scaleDims = new NPoint(window.innerWidth, window.innerHeight);
@@ -567,11 +567,13 @@ export default class NViewport {
 			this._ctx.clearRect(0, 0, this._canvasDims.x, this._canvasDims.y);
 
 			// matrix version of viewportToDivSpace
-			const scale = this._zoomFactorFitted;
-			const xOffset = this._canvasCenter.x + this._panCenter.x  * this._pixelRatio;
+			// canvas transform is in canvas space, so pixelRatio must be applied to both scale and offset
+			const scale = this._zoomFactorFitted * this._pixelRatio;
+			const xOffset = this._canvasCenter.x + this._panCenter.x * this._pixelRatio;
 			const yOffset = this._canvasCenter.y + this._panCenter.y * this._pixelRatio;
 			this._ctx.setTransform(scale, 0, 0, scale, xOffset, yOffset);
 
+			// erase things outside of bounds
 			if (this._activeAreaBounded) {
 				this._ctx.save();
 				this._ctx.beginPath();
@@ -617,7 +619,7 @@ export default class NViewport {
 	}
 
 	divToViewportSpace(npoint) {
-		return npoint.subtractp(this._divCenter.addp(this._panCenter)).divide1(this._zoomFactorFitted / this._pixelRatio);
+		return npoint.subtractp(this._divCenter.addp(this._panCenter)).divide1(this._zoomFactorFitted);
 	}
 
 	viewportToDivSpace(npoint) {
@@ -877,16 +879,17 @@ export default class NViewport {
 		let newPanCenter = newCenter;
 		if (this._activeAreaBounded) {
 			const corner = this._baseActiveAreaDims.multiply1(0.5 * this._zoomFactorFitted);
-			const clamping = corner.subtractp(this._canvasCenter).divide1(this._pixelRatio).addp(this._activeAreaPadding).max1(0);
+			const clamping = corner.subtractp(this._divCenter).addp(this._activeAreaPadding).max1(0);
 			newPanCenter = newPanCenter.clamp1p(clamping);
 		}
-		if (!this._panCenter.equals(newPanCenter)) {
-			this._panCenter = newPanCenter;
-			if (!quiet) {
-				this._pointerUpdated();
-			}
-			this.queueRedraw();
+		console.log(newPanCenter);
+		// if (!this._panCenter.equals(newPanCenter)) {
+		this._panCenter = newPanCenter;
+		if (!quiet) {
+			this._pointerUpdated();
 		}
+		this.queueRedraw();
+		// }
 		this._viewSpaceUpdated();
 	}
 

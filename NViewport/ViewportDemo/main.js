@@ -20,10 +20,10 @@ function setupElements() {
         navigable: true,
         activeAreaBounded: true,
         zoomCenterMode: "pointer",
+        fittingBasis: "element",
         fittingMode: "shrink",
         baseActiveDims: new NPoint(6000, 3750),
         activeAreaPadding: new NPoint(0),
-        pixelRatio: 2,
     });
     viewport.setup(rootDiv);
     viewport._activeBackground.setColor(NColor.fromHex("#1a1a1a"));
