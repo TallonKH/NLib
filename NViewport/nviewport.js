@@ -34,7 +34,9 @@ export default class NViewport {
 		this._outOfBoundsStyle = outOfBoundsStyle;
 
 		this._isActive = false;
+		this._enabled = true;
 		this._setupDone = false;
+		this._visible = false;
 		this._isMinimized = false;
 		this._minimizeThresholdX = minimizeThresholdX;
 		this._minimizeThresholdY = minimizeThresholdY;
@@ -189,19 +191,50 @@ export default class NViewport {
 			this._setupKeyListeners();
 			this._activeBackground = new this._activeBackgroundClass(this);
 			this.registerObj(this._activeBackground);
+			this._setupVisibilityListener();
 			window.setTimeout(function () {
 				const pc = this._panCenter;
 				this._setupDone = true;
 				this.updateActiveState();
 				this.queueRedraw();
+				this.onSetup();
 			}.bind(this), 0);
-			this.onSetup();
 		}
 		return this;
 	}
 	
+	_setupVisibilityListener(){
+		const self = this;
+		const observer = new IntersectionObserver(function(entries, observer){
+			if(entries[0].isIntersecting){
+				self._visible = true;
+				self.updateActiveState();
+				self.onVisible();
+			}else{
+				self._visible = false;
+				self.updateActiveState();
+				self.onHidden();
+			}
+		}, {
+			root: document.documentElement,
+		});
+		
+		observer.observe(this._container);
+	}
+
+	onVisible(){}
+
+	onHidden(){}
+
+	setEnabled(newState){
+		if(newState ^ this._enabled){
+			this._enabled = newState
+			this.updateActiveState();
+		}
+	}
+
 	updateActiveState(){
-		const newState = this._setupDone && (!this._isMinimized);
+		const newState = this._setupDone && this._enabled && this._visible && (!this._isMinimized);
 		if(newState ^ this._isActive){
 			this._isActive = newState;
 			if(newState){
