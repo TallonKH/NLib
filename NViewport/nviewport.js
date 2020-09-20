@@ -59,8 +59,8 @@ export default class NViewport {
 		this._activeAreaPadding = activeAreaPadding;
 		this._activeBackgroundClass = activeBackgroundClass;
 		this._activeBackground;
-		self._fittingScaleFactor;
-		self._zoomFactorFitted; // locked to fittingScaleFactor * zoomFactor
+		this._fittingScaleFactor;
+		this._zoomFactorFitted; // locked to fittingScaleFactor * zoomFactor
 		this._zoomCenterMode = zoomCenterMode;
 		this._minZoomFactor = minZoomFactor;
 		this._maxZoomFactor = maxZoomFactor;
@@ -76,9 +76,8 @@ export default class NViewport {
 		// the offset of the origin to the viewport center. In screen space.
 		this._panCenter = NPoint.ZERO;
 		this.panSensitivity = panSensitivity;
-
+		
 		this._mouseDown = false;
-
 		/** relative to viewport objects */
 		this._pointerPos = NPoint.ZERO;
 		/** position where mouse was last pressed down */
