@@ -191,13 +191,15 @@ export default class NViewport {
 			this._setupKeyListeners();
 			this._activeBackground = new this._activeBackgroundClass(this);
 			this.registerObj(this._activeBackground);
-			this._setupVisibilityListener();
 			window.setTimeout(function () {
 				const pc = this._panCenter;
 				this._setupDone = true;
+				this._setupVisibilityListener();
 				this.updateActiveState();
-				this.queueRedraw();
 				this.onSetup();
+				window.setTimeout(function () {
+					this.queueRedraw();
+				}.bind(this), 0);
 			}.bind(this), 0);
 		}
 		return this;
@@ -205,7 +207,9 @@ export default class NViewport {
 	
 	_setupVisibilityListener(){
 		const self = this;
+		console.log("setting up");
 		const observer = new IntersectionObserver(function(entries, observer){
+			console.log(entries[0]);
 			if(entries[0].isIntersecting){
 				self._visible = true;
 				self.updateActiveState();
