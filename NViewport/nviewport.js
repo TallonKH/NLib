@@ -25,9 +25,11 @@ export default class NViewport {
 		targetTickrate = 60,
 		responsiveResize = true,
 		pixelRatio = window.devicePixelRatio,
+		outOfBoundsStyle = "#111",
 	} = {}) {
 		this._container;
 		this._canvas;
+		this._outOfBoundsStyle = outOfBoundsStyle;
 
 		this._setupDone = false;
 		this._isActive = true;
@@ -605,7 +607,7 @@ export default class NViewport {
 		this._container.style.lineHeight = 0;
 		this._container.style.margin = 0;
 		this._container.style.padding = 0;
-		this._container.style.background = "#200";
+		this._container.style.background = this._outOfBoundsStyle;
 
 		this._canvas = document.createElement("canvas");
 		this._canvas.style.width = "100%";
