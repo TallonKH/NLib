@@ -15,7 +15,7 @@ export default class NViewport {
 		navigable = true,
 		zoomSensitivity = 1,
 		panSensitivity = 0.5,
-		zoomCenterMode = "pointer", //screen, pointer, origin
+		zoomCenterMode = "pointer", //view, pointer, origin
 		baseActiveDims = new NPoint(500, 500),
 		activeAreaBounded = false,
 		fittingBasis = "element",
@@ -43,7 +43,7 @@ export default class NViewport {
 		this._baseActiveAreaDims; // assigned by setBaseActiveDims
 		this._activeAreaCorners; // assigned by setBaseActiveDims
 		this.setBaseActiveDims(baseActiveDims);
-		this._fittingBasis = fittingBasis; // element, screen
+		this._fittingBasis = fittingBasis; // element, window
 		this._fittingMode = fittingMode; // shrink, fill
 		this._visibleAreaMinCorner;
 		this._visibleAreaMaxCorner;
@@ -103,13 +103,13 @@ export default class NViewport {
 		this._resizeObserver;
 
 		// size of the literal canvas element
-		this._divDims = NPoint.ZERO;
+		this._divDims;
 		// center of the literal canvas element
-		this._divCenter = NPoint.ZERO;
+		this._divCenter;
 		// size of the canvas context
-		this._canvasDims = NPoint.ZERO;
+		this._canvasDims;
 		// center of the canvas context
-		this._canvasCenter = NPoint.ZERO;
+		this._canvasCenter;
 		this.nonDragThreshold = 4;
 
 		this._allObjs = {};
@@ -187,8 +187,6 @@ export default class NViewport {
 			this.registerObj(this._activeBackground);
 			window.setTimeout(function () {
 				const pc = this._panCenter;
-				this.setPanCenter(pc.add1(100));
-				this.setPanCenter(pc);
 				this._setupDone = true;
 				this.queueRedraw();
 			}.bind(this), 0);
@@ -808,7 +806,7 @@ export default class NViewport {
 		});
 	}
 
-	_zoomUpdatePanCenter(prevZoomFactor, zoomCenter = null, quiet = false) {
+	_zoomUpdatePanCenter(prevZoomFactor, zoomCenter = null, zoomCenterMode = null, quiet = false) {
 		if (this._minZoomFactor > this._maxZoomFactor) {
 			throw `Invalid zoom minimum and maximum! [${self._minZoomFactor}, ${self._maxZoomFactor}]`;
 		}
@@ -818,14 +816,14 @@ export default class NViewport {
 		}
 
 		if (zoomCenter === null) {
-			switch (this._zoomCenterMode) {
+			switch (zoomCenterMode || this._zoomCenterMode) {
 				case "origin":
 					zoomCenter = this.viewportToDivSpace(NPoint.ZERO);
 					break;
 				case "pointer":
 					zoomCenter = this._pointerElemPos;
 					break;
-				case "screen":
+				case "view":
 					zoomCenter = this._divCenter;
 					break;
 				default:
@@ -851,7 +849,7 @@ export default class NViewport {
 		this._zoomFactor = clamp(newZoomFactor, this._minZoomFactor, this._maxZoomFactor);
 		this._zoomFactorFitted = this._fittingScaleFactor * this._zoomFactor;
 		this._zoomCounter = this.zoomFactorToCounter(this._zoomFactor);
-		this._zoomUpdatePanCenter(prevZoomFactor, zoomCenter, quiet);
+		this._zoomUpdatePanCenter(prevZoomFactor, zoomCenter, null, quiet);
 	}
 
 	setZoomCounter(newZoomCounter, zoomCenter = null, quiet = false) {
@@ -859,7 +857,7 @@ export default class NViewport {
 		this._zoomCounter = clamp(newZoomCounter, this._minZoomCounter, this._maxZoomCounter);
 		this._zoomFactor = this.zoomCounterToFactor(this._zoomCounter);
 		this._zoomFactorFitted = this._fittingScaleFactor * this._zoomFactor;
-		this._zoomUpdatePanCenter(prevZoomFactor, zoomCenter, quiet);
+		this._zoomUpdatePanCenter(prevZoomFactor, zoomCenter, null, quiet);
 	}
 
 	isInBounds(point, padding = NPoint.ZERO) {
