@@ -26,13 +26,18 @@ export default class NViewport {
 		responsiveResize = true,
 		pixelRatio = window.devicePixelRatio,
 		outOfBoundsStyle = "#111",
+		minimizeThresholdX = 100,
+		minimizeThresholdY = 100,
 	} = {}) {
 		this._container;
 		this._canvas;
 		this._outOfBoundsStyle = outOfBoundsStyle;
 
+		this._isActive = false;
 		this._setupDone = false;
-		this._isActive = true;
+		this._isMinimized = false;
+		this._minimizeThresholdX = minimizeThresholdX;
+		this._minimizeThresholdY = minimizeThresholdY;
 		this._responsiveResize = responsiveResize;
 		/** ignored in simple loop */
 		this._targetTickrate = targetTickrate;
@@ -188,12 +193,29 @@ export default class NViewport {
 			window.setTimeout(function () {
 				const pc = this._panCenter;
 				this._setupDone = true;
+				this.updateActiveState();
 				this.queueRedraw();
 			}.bind(this), 0);
 			this.onSetup();
 		}
 		return this;
 	}
+	
+	updateActiveState(){
+		const newState = this._setupDone && (!this._isMinimized);
+		if(newState ^ this._isActive){
+			this._isActive = newState;
+			if(newState){
+				this.onActivated();
+			}else{
+				this.onDeactivated();
+			}
+		}
+	}
+	
+	onActivated(){}
+
+	onDeactivated(){}
 
 	setParent(parentDiv){
 		parentDiv.appendChild(this._container);
@@ -518,8 +540,9 @@ export default class NViewport {
 
 	_handleResize(e) {
 		const resizeRect = e[0].contentRect;
-		this._isActive = !(resizeRect.height <= 5 || resizeRect.width <= 5);
-		if (!this._isActive) {
+		this._isMinimized = (resizeRect.width <= this._minimizeThresholdX || resizeRect.height <= this._minimizeThresholdY);
+		this.updateActiveState();
+		if (this._isMinimized) {
 			return;
 		}
 		this._divDims = new NPoint(resizeRect.width, resizeRect.height).clamp4(0, window.innerWidth, 0, window.innerHeight);
@@ -562,7 +585,7 @@ export default class NViewport {
 	}
 
 	_redraw() {
-		if (this._setupDone) {
+		if (this._isActive) {
 			this._ctx.resetTransform();
 			this._ctx.clearRect(0, 0, this._canvasDims.x, this._canvasDims.y);
 
