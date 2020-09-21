@@ -207,9 +207,7 @@ export default class NViewport {
 	
 	_setupVisibilityListener(){
 		const self = this;
-		console.log("setting up");
 		const observer = new IntersectionObserver(function(entries, observer){
-			console.log(entries[0]);
 			if(entries[0].isIntersecting){
 				self._visible = true;
 				self.updateActiveState();
@@ -242,6 +240,7 @@ export default class NViewport {
 		if(newState ^ this._isActive){
 			this._isActive = newState;
 			if(newState){
+				this.queueRedraw();
 				this.onActivated();
 			}else{
 				this.onDeactivated();
@@ -696,11 +695,13 @@ export default class NViewport {
 	_pointerUpdated(e) {
 		let newPointerElemPos = this._pointerElemPos;
 		if (e) {
+			const boundingRect = this._container.getBoundingClientRect();
 			newPointerElemPos = new NPoint(
-				e.pageX - this._container.offsetLeft,
-				e.pageY - this._container.offsetTop
+				e.pageX - boundingRect.left,
+				e.pageY - boundingRect.top
 			);
 		}
+		console.log(newPointerElemPos.toString());
 		this._pointerElemDelta = newPointerElemPos.subtractp(this._pointerElemPos);
 		this._pointerElemPos = newPointerElemPos;
 		const newPointerPos = this.divToViewportSpace(this._pointerElemPos);
