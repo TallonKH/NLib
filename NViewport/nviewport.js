@@ -78,7 +78,7 @@ export default class NViewport {
 		// the offset of the origin to the viewport center. In screen space.
 		this._panCenter = NPoint.ZERO;
 		this.panSensitivity = panSensitivity;
-		
+
 		this._mouseDown = false;
 		/** relative to viewport objects */
 		this._pointerPos = NPoint.ZERO;
@@ -139,19 +139,20 @@ export default class NViewport {
 		this._draggedObjIds = new Set();
 		this._draggedObjIdsSorted = [];
 
-		this._preMouseDownListeners = {};
-		this._preMouseUpListeners = {};
-		this._preMouseClickListeners = {};
-		this._prePointerMoveListeners = {};
-		this._preMouselListeners = {};
-		this._preMouseWheelListeners = {};
-		this._postMouseDownListeners = {};
-		this._postMouseUpListeners = {};
-		this._postMouseClickListeners = {};
-		this._postPointerMoveListeners = {};
-		this._postMouseWheelListeners = {};
-		this._tickListeners = {};
-		this._resizeListeners = {};
+		this._globalEventListenerData = new Map(); // eventName: {listeners: Map, listenerIdCounter: int}
+		this._addGlobalEvent("preMouseDown");
+		this._addGlobalEvent("postMouseDown");
+		this._addGlobalEvent("preMouseUp");
+		this._addGlobalEvent("postMouseUp");
+		this._addGlobalEvent("preMouseClick");
+		this._addGlobalEvent("postMouseClick");
+		this._addGlobalEvent("prePointerMove");
+		this._addGlobalEvent("postPointerMove");
+		this._addGlobalEvent("preMouseWheel");
+		this._addGlobalEvent("postMouseWheel");
+		this._addGlobalEvent("preTick");
+		this._addGlobalEvent("postTick");
+		this._addGlobalEvent("resize");
 
 		// is the mouse over the viewport?
 		this._pointerWithinElement = false;
@@ -180,10 +181,10 @@ export default class NViewport {
 	}
 
 	/** for most cases, no not override. Override onSetup instead. */
-	setup(parentDiv=null) {
+	setup(parentDiv = null) {
 		if (!this._setupDone) {
 			this._setupElements();
-			if(parentDiv !== null){
+			if (parentDiv !== null) {
 				parentDiv.appendChild(this._container);
 			}
 			this._setupScrollLogic();
@@ -204,15 +205,15 @@ export default class NViewport {
 		}
 		return this;
 	}
-	
-	_setupVisibilityListener(){
+
+	_setupVisibilityListener() {
 		const self = this;
-		const observer = new IntersectionObserver(function(entries, observer){
-			if(entries[0].isIntersecting){
+		const observer = new IntersectionObserver(function (entries, observer) {
+			if (entries[0].isIntersecting) {
 				self._visible = true;
 				self.updateActiveState();
 				self.onVisible();
-			}else{
+			} else {
 				self._visible = false;
 				self.updateActiveState();
 				self.onHidden();
@@ -220,39 +221,39 @@ export default class NViewport {
 		}, {
 			root: document.documentElement,
 		});
-		
+
 		observer.observe(this._container);
 	}
 
-	onVisible(){}
+	onVisible() {}
 
-	onHidden(){}
+	onHidden() {}
 
-	setEnabled(newState){
-		if(newState ^ this._enabled){
+	setEnabled(newState) {
+		if (newState ^ this._enabled) {
 			this._enabled = newState
 			this.updateActiveState();
 		}
 	}
 
-	updateActiveState(){
+	updateActiveState() {
 		const newState = this._setupDone && this._enabled && this._visible && (!this._isMinimized);
-		if(newState ^ this._isActive){
+		if (newState ^ this._isActive) {
 			this._isActive = newState;
-			if(newState){
+			if (newState) {
 				this.queueRedraw();
 				this.onActivated();
-			}else{
+			} else {
 				this.onDeactivated();
 			}
 		}
 	}
-	
-	onActivated(){}
 
-	onDeactivated(){}
+	onActivated() {}
 
-	setParent(parentDiv){
+	onDeactivated() {}
+
+	setParent(parentDiv) {
 		parentDiv.appendChild(this._container);
 	}
 
@@ -266,48 +267,31 @@ export default class NViewport {
 		this._baseActiveAreaDims = dims;
 		this._activeAreaCorners = dims.multiply1(0.5).mirrors();
 	}
-	
-	setPixelRatio(pixelRatio){
+
+	setPixelRatio(pixelRatio) {
 		this._pixelRatio = pixelRatio;
 	}
-	_preOnMouseDown(mouseClickEvent) {
-		Object.values(this._preMouseDownListeners).forEach(f => f(this, mouseClickEvent));
+
+	_addGlobalEvent(eventName) {
+		this._globalEventListenerData.set(eventName, {
+			_listeners: new Map(),
+			_listenerIdCounter: 0,
+		});
 	}
 
-	_preOnMouseUp(mouseClickEvent) {
-		Object.values(this._preMouseUpListeners).forEach(f => f(this, mouseClickEvent));
+	registerGlobalEventListener(eventName, callback) {
+		const dat = this._globalEventListenerData.get(eventName);
+		dat._listenerIdCounter++;
+		dat._listeners[dat._listenerIdCounter] = callback;
+		return dat._listenerIdCounter;
 	}
 
-	_preOnMouseClick(mouseClickEvent) {
-		Object.values(this._preMouseClickListeners).forEach(f => f(this, mouseClickEvent));
+	unregisterGlobalEventListener(eventName, listenerId) {
+		this._globalEventListenerData.get(eventName).delete(listenerId);
 	}
 
-	_preOnPointerMove(pointerMoveEvent) {
-		Object.values(this._prePointerMoveListeners).forEach(f => f(this, pointerMoveEvent));
-	}
-
-	_preOnMouseWheel(wheelEvent) {
-		Object.values(this._preMouseWheelListeners).forEach(f => f(this, wheelEvent));
-	}
-
-	_postOnMouseDown(mouseClickEvent) {
-		Object.values(this._postMouseDownListeners).forEach(f => f(this, mouseClickEvent));
-	}
-
-	_postOnMouseUp(mouseClickEvent) {
-		Object.values(this._postMouseUpListeners).forEach(f => f(this, mouseClickEvent));
-	}
-
-	_postOnMouseClick(mouseClickEvent) {
-		Object.values(this._postMouseClickListeners).forEach(f => f(this, mouseClickEvent));
-	}
-
-	_postOnPointerMove(pointerMoveEvent) {
-		Object.values(this._postPointerMoveListeners).forEach(f => f(this, pointerMoveEvent));
-	}
-
-	_postOnMouseWheel(wheelEvent) {
-		Object.values(this._postMouseWheelListeners).forEach(f => f(this, wheelEvent));
+	callGlobalEvent(eventName, data) {
+		this._globalEventListenerData.get(eventName)._listeners.forEach(f => f(this, data));
 	}
 
 	registerObj(obj) {
@@ -462,16 +446,15 @@ export default class NViewport {
 		}
 	}
 
-	_onResize(e) {
-		Object.values(this._resizeListeners).forEach(f => f(e));
-	}
-
 	// tickMultiplier = tick-based equiv of deltaTime
 	// overflow = accidental ms delay since last tick
 	_onTick(deltaT, tickMultiplier, overflow) {
 		// listeners
-		Object.values(this._tickListeners).forEach(f => f(this, deltaT, tickMultiplier, overflow));
-
+		this.callGlobalEvent("preTick", {
+			deltaT: deltaT,
+			tickMultiplier: tickMultiplier,
+			overflow: overflow,
+		});
 		// tickable objs
 		for (const uuid of this._tickableObjIds) {
 			const obj = this._allObjs[uuid];
@@ -481,6 +464,11 @@ export default class NViewport {
 		// 	// this function is already inside an animation frame, so don't request another for drawing
 		// 	// this._redraw();
 		// }
+		this.callGlobalEvent("postTick", {
+			deltaT: deltaT,
+			tickMultiplier: tickMultiplier,
+			overflow: overflow,
+		});
 	}
 
 	_setupSimpleLoop() {
@@ -551,9 +539,9 @@ export default class NViewport {
 
 	queueResizeUpdate(event) {
 		this._pendingResizeUpdate = event;
-		if(this._responsiveResize){
+		if (this._responsiveResize) {
 			this.__updateUnbound();
-		}else{
+		} else {
 			this.queueUpdate();
 		}
 	}
@@ -590,7 +578,7 @@ export default class NViewport {
 		this._canvas.height = this._canvasDims.y;
 
 		let scaleDims;
-		switch(this._fittingBasis){
+		switch (this._fittingBasis) {
 			case "element":
 				scaleDims = this._divDims;
 				break;
@@ -611,7 +599,9 @@ export default class NViewport {
 		}
 		this._zoomFactorFitted = this._fittingScaleFactor * this._zoomFactor;
 		this._viewSpaceUpdated();
-		this._onResize(e);
+		this.callGlobalEvent("resize", {
+			resizeEvent: e
+		});
 	}
 
 	_viewSpaceUpdated() {
@@ -701,7 +691,6 @@ export default class NViewport {
 				e.pageY - boundingRect.top
 			);
 		}
-		console.log(newPointerElemPos.toString());
 		this._pointerElemDelta = newPointerElemPos.subtractp(this._pointerElemPos);
 		this._pointerElemPos = newPointerElemPos;
 		const newPointerPos = this.divToViewportSpace(this._pointerElemPos);
@@ -711,8 +700,9 @@ export default class NViewport {
 		this._pointerPos = newPointerPos;
 		this._pointerWithinBounds = this.isInBounds(this._pointerPos);
 
-		this._preOnPointerMove(e);
-
+		this.callGlobalEvent("prePointerMove", {
+			pointerEvent: e
+		});
 
 		// dragging
 		if (this._mouseDown) {
@@ -815,7 +805,9 @@ export default class NViewport {
 			obj.onPointerOverlapMovement(e);
 		}
 
-		this._postOnPointerMove(e);
+		this.callGlobalEvent("postPointerMove", {
+			pointerEvent: e
+		});
 	}
 
 	keyPressed(code) {}
@@ -974,7 +966,9 @@ export default class NViewport {
 
 		this._container.addEventListener("wheel", function (e) {
 			if (self._isActive) {
-				self._preOnMouseWheel(e);
+				self.callGlobalEvent("preMouseWheel", {
+					pointerEvent: e
+				});
 				for (const uuid of self._pointerAwareObjIdsSorted) {
 					const obj = self._allObjs[uuid];
 					if (obj.ignoreWheelEvent(e)) {
@@ -985,7 +979,9 @@ export default class NViewport {
 						break;
 					}
 				}
-				self._postOnMouseWheel(e);
+				self.callGlobalEvent("postMouseWheel", {
+					pointerEvent: e
+				});
 				e.preventDefault();
 			}
 		});
@@ -995,7 +991,9 @@ export default class NViewport {
 				self._mouseElemDownPos = self._pointerElemPos;
 				self._mouseDownPos = self.divToViewportSpace(self._mouseElemDownPos);
 				self._mouseDown = true;
-				self._preOnMouseDown(e);
+				self.callGlobalEvent("preMouseDown", {
+					pointerEvent: e
+				});
 				for (const uuid of self._pointerAwareObjIdsSorted) {
 					const obj = self._allObjs[uuid];
 					if (obj.ignoreClickEvent(e)) {
@@ -1007,7 +1005,9 @@ export default class NViewport {
 						break;
 					}
 				}
-				self._postOnMouseDown(e);
+				self.callGlobalEvent("postMouseDown", {
+					pointerEvent: e
+				});
 				self._pointerUpdated();
 				e.preventDefault();
 			}
@@ -1015,7 +1015,9 @@ export default class NViewport {
 
 		document.addEventListener("pointerup", function (e) {
 			if (self._isActive) {
-				self._preOnMouseUp(e);
+				self.callGlobalEvent("preMouseUp", {
+					pointerEvent: e
+				});
 				self._mouseDown = false;
 				for (const uuid of self._pointerAwareObjIdsSorted) {
 					const obj = self._allObjs[uuid];
@@ -1031,7 +1033,9 @@ export default class NViewport {
 
 				const isDrag = self._pointerElemDragDistance >= self.nonDragThreshold;
 				if (!isDrag) {
-					self._preOnMouseClick(e);
+					self.callGlobalEvent("preMouseClick", {
+						pointerEvent: e
+					});
 				}
 				for (const uuid of self._heldObjIdsSorted) {
 					const obj = self._allObjs[uuid];
@@ -1048,9 +1052,13 @@ export default class NViewport {
 
 				self.unregisterAllHeldObjs();
 				self.unregisterAllDraggedObjs();
-				self._postOnMouseUp(e);
+				self.callGlobalEvent("postMouseUp", {
+					pointerEvent: e
+				});
 				if (!isDrag) {
-					self._postOnMouseClick(e);
+					self.callGlobalEvent("postMouseClick", {
+						pointerEvent: e
+					});
 				}
 				self._pointerUpdated();
 				e.preventDefault();

@@ -39,6 +39,16 @@ export default class StateManager{
         return dat._value;
     }
 
+    perform(name, func){
+        const dat = this.ensureExists(name);
+        func(dat);
+        this.alertListener(name, {
+            name: name,
+            prevValue: undefined, // TODO figure out if this is needed
+            changer: changer,
+        });
+    }
+
     increment(name, changer=null){
         const dat = this.ensureExists(name);
         const prev = dat._value;
