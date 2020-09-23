@@ -118,7 +118,7 @@ export default class VPObject {
      * Default behavior: block.
      */
     blockAllPointerEvents() {
-        return false;
+        return true;
     }
 
     /**

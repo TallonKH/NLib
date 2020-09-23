@@ -338,7 +338,7 @@ export default class NViewport {
 		if(dat._sorted !== undefined){
 			dat._sorted.splice(dat._sorted.indexOf(obj._uuid), 1);
 			// TODO figure out why removeSorted breaks
-			// removeSorted(dat._sorted, obj._uuid, dat._sorter);
+			removeSorted(dat._sorted, obj._uuid, dat._sorter);
 		}
 	}
 
