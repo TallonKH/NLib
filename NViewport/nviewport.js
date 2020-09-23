@@ -291,7 +291,7 @@ export default class NViewport {
   registerGlobalEventListener(eventName, callback) {
     const dat = this._globalEventChannels.get(eventName);
     dat._listenerIdCounter++;
-    dat._listeners[dat._listenerIdCounter] = callback;
+    dat._listeners.set(dat._listenerIdCounter, callback);
     return dat._listenerIdCounter;
   }
 
@@ -300,7 +300,11 @@ export default class NViewport {
   }
 
   callGlobalEvent(eventName, data) {
-    this._globalEventChannels.get(eventName)._listeners.forEach(f => f(this, data));
+    console.log(this._globalEventChannels.get(eventName)._listeners);
+    for (const [key, func] of this._globalEventChannels.get(eventName)._listeners){
+      console.log(func);
+      func(this, data);
+    }
   }
 
   registerObj(obj) {
