@@ -21,7 +21,7 @@ export default class GrabObj extends VPObject {
 
     draw(ctx) {
         ctx.fillStyle = this.colorHex;
-        if (this._held || (this._pointerOverlapping && !this._vp.mouseDown)) {
+        if (this._registeredStates.get("held") || (this._registeredStates.get("pointerOverlapping") && !this._vp.mouseDown)) {
             ctx.lineWidth = 6;
             ctx.strokeStyle = "#ec5";
             this.strokeCircle(ctx);
@@ -35,7 +35,7 @@ export default class GrabObj extends VPObject {
         }
 
         // ignore if something else is being held
-        return (this._vp._heldObjIds.size > 0) && (!this._vp._heldObjIds.has(this._uuid));
+        return (this._vp.getRegistrySize("held") > 0) && (!this._registeredStates.get("held"));
     }
 
     onPointerOverlapStarted(pointerMoveEvent) {

@@ -32,18 +32,17 @@ export function findSorted(array, item, compareFunc = subtract) {
 	while (true) {
 		// (a >> 1) is faster than Math.floor(a * 0.5)
 		mid = (min + max) >> 1;
-
 		if (min >= max) {
+			console.log("kill: min", min, "max", max);
 			return -1;
 		}
-
+		
 		midItem = array[mid];
 		const diff = compareFunc(midItem, item);
-
-		if (diff === 0) {
+		console.log("min=", min, "mid=", mid, `(${midItem})`, "max=", max, "diff=", diff)
+		if(diff === 0){
 			return mid;
 		}
-
 		if (diff > 0) {
 			max = mid;
 			continue;
@@ -58,8 +57,8 @@ export function removeSorted(array, item, compareFunc = subtract){
 	const found = findSorted(array, item, compareFunc);
 	if(found >= 0){
 		array.splice(found, 1);
-		return found;
 	}
+	return found;
 }
 
 export function insertSorted(array, item, compareFunc = subtract) {

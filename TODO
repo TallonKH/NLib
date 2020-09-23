@@ -4,7 +4,6 @@ Libraries
 Viewport
 - combine all register/unregisters into a map of registries
     ie: instead of `registerMouseListeningObj(obj)`, have `registerObj("MouseListening", obj)`
-    also: do this for pre/post listeners
 - add ability to specify ticking order
 ? add ability to supply custom data to event-registered objects
     ie: on click, an object could supply *where* it was clicked for future reference

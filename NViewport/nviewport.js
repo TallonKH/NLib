@@ -119,40 +119,9 @@ export default class NViewport {
 		this.nonDragThreshold = 4;
 
 		this._allObjs = {};
-
-		this._drawRegisterCounter = 0
-		this._drawnObjIds = new Set();
-		this._drawnObjIdsSorted = [];
-		this._tickableObjIds = new Set();
-		this._mouseListeningObjIds = new Set();
-		this._mouseListeningObjIdsSorted = [];
-		/** objects that the pointer is overlapping */
-		this._pointerAwareObjIds = new Set();
-		this._pointerAwareObjIdsSorted = [];
-		/** objects that the pointer is overlapping */
-		this._pointerOverlappingObjIds = new Set();
-		this._pointerOverlappingObjIdsSorted = [];
-		/** objects that the mouse is pressed down on */
-		this._heldObjIds = new Set();
-		this._heldObjIdsSorted = [];
-		/** objects that the mouse is pressed down on and moved sufficiently */
-		this._draggedObjIds = new Set();
-		this._draggedObjIdsSorted = [];
-
-		this._globalEventListenerData = new Map(); // eventName: {listeners: Map, listenerIdCounter: int}
-		this._addGlobalEvent("preMouseDown");
-		this._addGlobalEvent("postMouseDown");
-		this._addGlobalEvent("preMouseUp");
-		this._addGlobalEvent("postMouseUp");
-		this._addGlobalEvent("preMouseClick");
-		this._addGlobalEvent("postMouseClick");
-		this._addGlobalEvent("prePointerMove");
-		this._addGlobalEvent("postPointerMove");
-		this._addGlobalEvent("preMouseWheel");
-		this._addGlobalEvent("postMouseWheel");
-		this._addGlobalEvent("preTick");
-		this._addGlobalEvent("postTick");
-		this._addGlobalEvent("resize");
+		this._objRegistries = new Map();
+		
+		this._globalEventChannels = new Map(); // eventName: {listeners: Map, listenerIdCounter: int}
 
 		// is the mouse over the viewport?
 		this._pointerWithinElement = false;
@@ -160,12 +129,15 @@ export default class NViewport {
 		this._shiftDown = false;
 		this._altDown = false;
 		this._downKeys = new Set();
+		
+		// used for drawing objects in order when they have the same z-depth/z-sub-depth
+		this._drawRegisterCounter = 0;
 
 		this.depthSorter = function (aid, bid) {
 			const a = this._allObjs[aid];
 			const b = this._allObjs[bid];
-			return (b.zOrder - a.zOrder) ||
-				(b.zSubOrder - a.zSubOrder) ||
+			return (b._zOrder - a._zOrder) ||
+				(b._zSubOrder - a._zSubOrder) || 
 				(b._drawRegisterNum - a._drawRegisterNum);
 		}.bind(this);
 
@@ -183,6 +155,8 @@ export default class NViewport {
 	/** for most cases, no not override. Override onSetup instead. */
 	setup(parentDiv = null) {
 		if (!this._setupDone) {
+			this._setupObjRegistries();
+			this._setupGlobalEventChannels();
 			this._setupElements();
 			if (parentDiv !== null) {
 				parentDiv.appendChild(this._container);
@@ -204,6 +178,35 @@ export default class NViewport {
 			}.bind(this), 0);
 		}
 		return this;
+	}
+
+	_setupObjRegistries(){
+		this.addObjRegistry("drawable", this.reverseDepthSorter, function(obj){
+			this._drawRegisterCounter++;
+			obj._drawRegisterNum = this._drawRegisterCounter;
+		}.bind(this));
+		this.addObjRegistry("tickable", null);
+		this.addObjRegistry("mouseListening", this.depthSorter);
+		this.addObjRegistry("pointerAware", this.depthSorter);
+		this.addObjRegistry("pointerOverlapping", this.depthSorter);
+		this.addObjRegistry("held", this.depthSorter);
+		this.addObjRegistry("dragged", this.depthSorter);
+	}
+
+	_setupGlobalEventChannels(){
+		this._addGlobalEventChannel("preMouseDown");
+		this._addGlobalEventChannel("postMouseDown");
+		this._addGlobalEventChannel("preMouseUp");
+		this._addGlobalEventChannel("postMouseUp");
+		this._addGlobalEventChannel("preMouseClick");
+		this._addGlobalEventChannel("postMouseClick");
+		this._addGlobalEventChannel("prePointerMove");
+		this._addGlobalEventChannel("postPointerMove");
+		this._addGlobalEventChannel("preMouseWheel");
+		this._addGlobalEventChannel("postMouseWheel");
+		this._addGlobalEventChannel("preTick");
+		this._addGlobalEventChannel("postTick");
+		this._addGlobalEventChannel("resize");
 	}
 
 	_setupVisibilityListener() {
@@ -272,170 +275,129 @@ export default class NViewport {
 		this._pixelRatio = pixelRatio;
 	}
 
-	_addGlobalEvent(eventName) {
-		this._globalEventListenerData.set(eventName, {
+	_addGlobalEventChannel(eventName) {
+		this._globalEventChannels.set(eventName, {
 			_listeners: new Map(),
 			_listenerIdCounter: 0,
 		});
 	}
 
 	registerGlobalEventListener(eventName, callback) {
-		const dat = this._globalEventListenerData.get(eventName);
+		const dat = this._globalEventChannels.get(eventName);
 		dat._listenerIdCounter++;
 		dat._listeners[dat._listenerIdCounter] = callback;
 		return dat._listenerIdCounter;
 	}
 
 	unregisterGlobalEventListener(eventName, listenerId) {
-		this._globalEventListenerData.get(eventName).delete(listenerId);
+		this._globalEventChannels.get(eventName).delete(listenerId);
 	}
 
 	callGlobalEvent(eventName, data) {
-		this._globalEventListenerData.get(eventName)._listeners.forEach(f => f(this, data));
+		this._globalEventChannels.get(eventName)._listeners.forEach(f => f(this, data));
 	}
 
 	registerObj(obj) {
 		this._allObjs[obj._uuid] = obj;
 		if (obj._drawable) {
-			this.registerDrawnObj(obj);
+			this.registerObjFor("drawable", obj);
 		}
 		if (obj._mouseListening) {
-			this.registerMouseListeningObj(obj);
+			this.registerObjFor("mouseListening", obj);
 		}
 		if (obj._tickable) {
-			this.registerTickableObj(obj);
+			this.registerObjFor("tickable", obj);
 		}
 		this.queueRedraw();
 	}
 
-	registerDrawnObj(obj) {
-		obj._drawRegisterNum = this._drawRegisterCounter++;
-		this._drawnObjIds.add(obj._uuid);
-		insertSorted(this._drawnObjIdsSorted, obj._uuid, this.reverseDepthSorter);
+	registryForHas(registryName, obj){
+		return this._objRegistries.get(registryName)._idSet.has(obj._uuid);
 	}
 
-	registerTickableObj(obj) {
-		this._tickableObjIds.add(obj._uuid);
+	registerObjFor(registryName, obj){
+		// set appropriate object field
+		obj._registeredStates.set(registryName, true);
+		
+		// add to registry
+		const dat = this._objRegistries.get(registryName);
+		dat._idSet.add(obj._uuid);
+		dat._onRegister(obj);
+		if(dat._sorted !== undefined){
+			insertSorted(dat._sorted, obj._uuid, dat._sorter);
+		}
+	}
+	
+	unregisterObjFor(registryName, obj){
+		// set appropriate object field
+		obj._registeredStates.set(registryName, false);
+		
+		// remove from registry
+		const dat = this._objRegistries.get(registryName);
+		dat._idSet.delete(obj._uuid);
+		if(dat._sorted !== undefined){
+			dat._sorted.splice(dat._sorted.indexOf(obj._uuid), 1);
+			// TODO figure out why removeSorted breaks
+			// removeSorted(dat._sorted, obj._uuid, dat._sorter);
+		}
 	}
 
-	registerMouseListeningObj(obj) {
-		this._mouseListeningObjIds.add(obj._uuid);
-		insertSorted(this._mouseListeningObjIdsSorted, obj._uuid, this.depthSorter);
+	changeObjOrdering(registryName, obj, func){
+		const dat = this._objRegistries.get(registryName);
+		removeSorted(dat._sorted, obj._uuid, dat._sorter);
+		func(obj);
+		insertSorted(dat._sorted, obj._uuid, dat._sorter);
 	}
 
-	registerPointerAwareObj(obj) {
-		obj._pointerAware = true;
-		this._pointerAwareObjIds.add(obj._uuid);
-		insertSorted(this._pointerAwareObjIdsSorted, obj._uuid, this.depthSorter);
+	unregisterAllObjsFor(registryName){
+		const dat = this._objRegistries.get(registryName);
+		dat._idSet.forEach(id => this._allObjs[id]._registeredStates.set(registryName, false));
+		dat._idSet.clear();
+		dat._sorted.length = 0;
+	}
+	
+	addObjRegistry(registryName, sorter=null, onRegister=Function.prototype){
+		const dat = {
+			_idSet: new Set(),
+		};
+		if(sorter !== null){
+			dat._sorter = sorter;
+			dat._sorted = [];
+		}
+
+		dat._onRegister = onRegister;
+
+		this._objRegistries.set(registryName, dat);
 	}
 
-	registerPointerOverlappingObj(obj) {
-		obj._pointerOverlapping = true;
-		this._pointerOverlappingObjIds.add(obj._uuid);
-		insertSorted(this._pointerOverlappingObjIdsSorted, obj._uuid, this.depthSorter);
+	getRegistryItems(registryName){
+		return this._objRegistries.get(registryName)._idSet;
 	}
-
-	registerHeldObj(obj) {
-		obj._held = true;
-		this._heldObjIds.add(obj._uuid);
-		insertSorted(this._heldObjIdsSorted, obj._uuid, this.depthSorter);
+	
+	getRegistryItemsSorted(registryName){
+		return this._objRegistries.get(registryName)._sorted;
 	}
-
-	registerDraggedObj(obj) {
-		obj._dragged = true;
-		this._draggedObjIds.add(obj._uuid);
-		insertSorted(this._draggedObjIdsSorted, obj._uuid, this.depthSorter);
+	
+	getRegistrySize(registryName){
+		return this._objRegistries.get(registryName)._idSet.size;
 	}
-
-	unregisterDrawnObj(obj) {
-		this._drawnObjIds.delete(obj._uuid);
-		removeSorted(this._drawnObjIdsSorted, obj._uuid, this.reverseDepthSorter);
-	}
-
-	unregisterTickableObj(obj) {
-		this._tickableObjIds.delete(obj._uuid);
-	}
-
-	unregisterMouseListeningObj(obj) {
-		this._mouseListeningObjIds.delete(obj._uuid);
-		removeSorted(this._mouseListeningObjIdsSorted, obj._uuid, this.depthSorter);
-	}
-
-	unregisterPointerAwareObj(obj) {
-		obj._pointerAware = false;
-		this._pointerAwareObjIds.delete(obj._uuid);
-		removeSorted(this._pointerAwareObjIdsSorted, obj._uuid, this.depthSorter);
-	}
-
-	unregisterPointerOverlappingObj(obj) {
-		obj._pointerOverlapping = false;
-		this._pointerOverlappingObjIds.delete(obj._uuid);
-		removeSorted(this._pointerOverlappingObjIdsSorted, obj._uuid, this.depthSorter);
-	}
-
-	unregisterHeldObj(obj) {
-		obj._held = false;
-		this._heldObjIds.delete(obj._uuid);
-		removeSorted(this._heldObjIdsSorted, obj._uuid, this.depthSorter);
-	}
-
-	unregisterDraggedObj(obj) {
-		obj._dragged = false;
-		this._draggedObjIds.delete(obj._uuid);
-		removeSorted(this._draggedObjIdsSorted, obj._uuid, this.depthSorter);
-	}
-
-	unregisterAllDrawnObjs() {
-		this._drawnObjIds.clear();
-		this._drawnObjIdsSorted.length = 0;
-		this.registerDrawnObj(this._activeBackground);
-	}
-
-	unregisterAllMouseListeningObjs() {
-		this._mouseListeningObjIds.clear();
-		this._mouseListeningObjIdsSorted.length = 0;
-		this.registerMouseListeningObj(this._activeBackground);
-	}
-
-	unregisterAllPointerAwareObjs() {
-		this._pointerAwareObjIds.forEach(id => this._allObjs[id]._pointerAware = false);
-		this._pointerAwareObjIds.clear();
-		this._pointerAwareObjIdsSorted.length = 0;
-	}
-
-	unregisterAllPointerOverlappingObjs() {
-		this._pointerOverlappingObjIds.forEach(id => this._allObjs[id]._pointerOverlapping = false);
-		this._pointerOverlappingObjIds.clear();
-		this._pointerOverlappingObjIdsSorted.length = 0;
-	}
-
-	unregisterAllHeldObjs() {
-		this._heldObjIds.forEach(id => this._allObjs[id]._held = false);
-		this._heldObjIds.clear();
-		this._heldObjIdsSorted.length = 0;
-	}
-
-	unregisterAllDraggedObjs() {
-		this._draggedObjIds.forEach(id => this._allObjs[id]._dragged = false);
-		this._draggedObjIds.clear();
-		this._draggedObjIdsSorted.length = 0;
-	}
-
+	
 	forget(obj) {
 		if (obj === this._activeBackground) {
 			return false;
 		}
 
 		obj.onForget();
+		// unregister from every registry
+		for(const [registryName, state] of obj._registeredStates){
+			if(state){
+				this.unregisterObjFor(registryName, obj);
+			}
+		}
 		delete this._allObjs[obj._uuid];
-		this.unregisterDrawnObj(obj);
-		this.unregisterTickableObj(obj);
-		this.unregisterMouseListeningObj(obj);
-		this.unregisterPointerAwareObj(obj);
-		this.unregisterPointerOverlappingObj(obj);
-		this.unregisterHeldObj(obj);
-		this.unregisterDraggedObj(obj);
+
 		this.queueRedraw();
+
 		// update mouse logic in case an object is removed that was preventing a lower object from being touched
 		this._pointerUpdated();
 	}
@@ -456,7 +418,7 @@ export default class NViewport {
 			overflow: overflow,
 		});
 		// tickable objs
-		for (const uuid of this._tickableObjIds) {
+		for (const uuid of this.getRegistryItems("tickable")) {
 			const obj = this._allObjs[uuid];
 			obj.onTick(deltaT, tickMultiplier, overflow);
 		}
@@ -631,7 +593,7 @@ export default class NViewport {
 				this._ctx.clip();
 			}
 
-			for (const uuid of this._drawnObjIdsSorted) {
+			for (const uuid of this.getRegistryItemsSorted("drawable")) {
 				const obj = this._allObjs[uuid];
 				obj.draw(this._ctx);
 			}
@@ -711,10 +673,10 @@ export default class NViewport {
 			this._pointerElemDragDistance += this._pointerElemDelta.length();
 
 			if (this._pointerElemDragDistance >= this.nonDragThreshold) {
-				for (const uuid of this._heldObjIdsSorted) {
+				for (const uuid of this.getRegistryItemsSorted("held")) {
 					const obj = this._allObjs[uuid];
-					if (!this._draggedObjIds.has(uuid)) {
-						this.registerDraggedObj(obj);
+					if (!this.registryForHas("dragged", obj)) {
+						this.registerObjFor("dragged", obj);
 						obj.onDragStarted(e);
 					}
 					obj.onDragged(e);
@@ -723,11 +685,11 @@ export default class NViewport {
 		}
 
 		// determine pointer awareness
-		const prevPointerAwareObjIds = new Set(this._pointerAwareObjIds);
+		const prevPointerAwareObjIds = new Set(this.getRegistryItems("pointerAware"));
 		const currentPointerAwareObjIds = new Set();
 		const newlyPointerAwareObjs = [];
 
-		for (const uuid of this._mouseListeningObjIdsSorted) {
+		for (const uuid of this.getRegistryItemsSorted("mouseListening")) {
 			const obj = this._allObjs[uuid];
 
 			if ((!obj._mouseListening) || obj.ignoreAllPointerEvents()) {
@@ -739,7 +701,7 @@ export default class NViewport {
 				// is newly aware
 				if (!prevPointerAwareObjIds.has(uuid)) {
 					newlyPointerAwareObjs.push(obj);
-					this.registerPointerAwareObj(obj);
+					this.registerObjFor("pointerAware", obj);
 				}
 				if (obj.blockAllPointerEvents()) {
 					break;
@@ -751,16 +713,16 @@ export default class NViewport {
 		for (const uuid of prevPointerAwareObjIds) {
 			const obj = this._allObjs[uuid];
 			if (!currentPointerAwareObjIds.has(uuid)) {
-				this.unregisterPointerAwareObj(obj);
+				this.unregisterObjFor("pointerAware", obj);
 				obj.onPointerAwarenessEnded(e);
 			}
 		}
 
 		// determine overlaps (similar to, but not the same as awareness)
-		const prevPointerOverlappingObjIds = new Set(this._pointerOverlappingObjIds);
+		const prevPointerOverlappingObjIds = new Set(this.getRegistryItems("pointerOverlapping"));
 		const currentPointerOverlappingObjIds = new Set();
 		const newlyPointerOverlappingObjs = [];
-		for (const uuid of this._pointerAwareObjIdsSorted) {
+		for (const uuid of this.getRegistryItemsSorted("pointerAware")) {
 			const obj = this._allObjs[uuid];
 			if (obj.ignoreOverlapEvent(e)) {
 				continue;
@@ -770,7 +732,7 @@ export default class NViewport {
 			// newly overlapping
 			if (!prevPointerOverlappingObjIds.has(uuid)) {
 				newlyPointerOverlappingObjs.push(obj);
-				this.registerPointerOverlappingObj(obj);
+				this.registerObjFor("pointerOverlapping", obj);
 			}
 			if (obj.blockOverlapEvent(e)) {
 				break;
@@ -781,7 +743,7 @@ export default class NViewport {
 		for (const uuid of prevPointerOverlappingObjIds) {
 			const obj = this._allObjs[uuid];
 			if (!currentPointerOverlappingObjIds.has(uuid)) {
-				this.unregisterPointerOverlappingObj(obj);
+				this.unregisterObjFor("pointerOverlapping", obj);
 				obj.onPointerOverlapEnded(e);
 			}
 		}
@@ -800,7 +762,7 @@ export default class NViewport {
 
 		// events for overlapping movement
 		// do this down here because started events should happen after ended events
-		for (const uuid of this._pointerAwareObjIdsSorted) {
+		for (const uuid of this.getRegistryItemsSorted("pointerAware")) {
 			const obj = this._allObjs[uuid];
 			obj.onPointerOverlapMovement(e);
 		}
@@ -969,7 +931,7 @@ export default class NViewport {
 				self.callGlobalEvent("preMouseWheel", {
 					pointerEvent: e
 				});
-				for (const uuid of self._pointerAwareObjIdsSorted) {
+				for (const uuid of self.getRegistryItemsSorted("pointerAware")) {
 					const obj = self._allObjs[uuid];
 					if (obj.ignoreWheelEvent(e)) {
 						continue;
@@ -994,12 +956,12 @@ export default class NViewport {
 				self.callGlobalEvent("preMouseDown", {
 					pointerEvent: e
 				});
-				for (const uuid of self._pointerAwareObjIdsSorted) {
+				for (const uuid of self.getRegistryItemsSorted("pointerAware")) {
 					const obj = self._allObjs[uuid];
 					if (obj.ignoreClickEvent(e)) {
 						continue;
 					}
-					self.registerHeldObj(obj);
+					self.registerObjFor("held", obj);
 					obj.onPressed(e);
 					if (obj.blockClickEvent(e)) {
 						break;
@@ -1019,7 +981,7 @@ export default class NViewport {
 					pointerEvent: e
 				});
 				self._mouseDown = false;
-				for (const uuid of self._pointerAwareObjIdsSorted) {
+				for (const uuid of self.getRegistryItemsSorted("pointerAware")) {
 					const obj = self._allObjs[uuid];
 
 					if (obj.ignoreClickEvent(e)) {
@@ -1037,7 +999,7 @@ export default class NViewport {
 						pointerEvent: e
 					});
 				}
-				for (const uuid of self._heldObjIdsSorted) {
+				for (const uuid of self.getRegistryItemsSorted("held")) {
 					const obj = self._allObjs[uuid];
 					obj.onUnpressed(e);
 					if (isDrag) {
@@ -1050,8 +1012,8 @@ export default class NViewport {
 				self._pointerDragMaxDelta = 0;
 				self._pointerElemDragDistance = 0;
 
-				self.unregisterAllHeldObjs();
-				self.unregisterAllDraggedObjs();
+				self.unregisterAllObjsFor("held");
+				self.unregisterAllObjsFor("dragged");
 				self.callGlobalEvent("postMouseUp", {
 					pointerEvent: e
 				});

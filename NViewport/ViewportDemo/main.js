@@ -33,14 +33,17 @@ function setupElements() {
 function main() {
     const grabbables = [];
     let height = -100;
-    const count = 100;
-    for(const space of ["RGB", "HSL", "Lab"]){
+    const count = 4;
+    // const spaces = ["RGB", "HSL", "Lab"];
+    const spaces = ["RGB"];
+    for(const space of spaces){
         const color1 = NColor.fromHex("#ff4747").convertTo(space);
         const color2 = NColor.fromHex("#4769ff").convertTo(space);
         for (let i = -count; i < count; i++) {
-            const grabbable = new GrabObj(viewport, new NPoint(i*25*Math.cos(Math.abs(i) / 15), height + 400 * Math.sin(i/5)));
+            // const grabbable = new GrabObj(viewport, new NPoint(i*25*Math.cos(Math.abs(i) / 15), height + 400 * Math.sin(i/5)));
+            const grabbable = new GrabObj(viewport, new NPoint(i * 25, 100));
             grabbable.setColor(NColor.lerp(color1, color2, (i+count)/(count*2)));
-            grabbable.setSize(lerp(25,10,Math.abs(i)/count));
+            // grabbable.setSize(lerp(25,10,Math.abs(i)/count));
             viewport.registerObj(grabbable);
         }
         height += 100;

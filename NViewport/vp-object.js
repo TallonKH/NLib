@@ -24,18 +24,11 @@ export default class VPObject {
         this._zOrder = zOrder;
         this._zSubOrder = 0;
 
-
-        // true if the pointer is overlapping the object
-        this._pointerAware = false;
-
-        // true if (the pointer is overlapping the object) && (the OnPointerOverlap event is not blocked by higher objects)
-        this._pointerOverlapping = false;
-
-        // true if (the mouse is down) && (this._pointerAware was true when the mouse was pressed) && (the OnPressed event is not blocked by higher objects)
-        this._held = false;
-
-        // true if (this._held is true) && (the cursor has moved a minimum distance since the mouse was pressed)
-        this._dragged = false;
+        // pointerAware: true if the pointer is overlapping the object
+        // pointerOverlapping: true if (the pointer is overlapping the object) && (the OnPointerOverlap event is not blocked by higher objects)
+        // held: true if (the mouse is down) && (pointerAware was true when the mouse was pressed) && (the OnPressed event is not blocked by higher objects)
+        // dragged: true if (held is true) && (the cursor has moved a minimum distance since the mouse was pressed)
+        this._registeredStates = new Map();
 
         this._size = 10;
         this._suggestedCursors = {};
@@ -48,15 +41,11 @@ export default class VPObject {
     onTick(deltaT, tickMultiplier, overflow) {}
 
     setZOrder(newOrder) {
-        removeSorted(this._vp._drawnObjIdsSorted, this._uuid, this._vp.reverseDepthSorter);
-        this._zOrder = newOrder;
-        insertSorted(this._vp._drawnObjIdsSorted, this._uuid, this._vp.reverseDepthSorter);
+        changeObjOrdering("drawable", this, vobj => vobj._zOrder = newOrder);
     }
 
     setZSubOrder(newSubOrder) {
-        removeSorted(this._vp._drawnObjIdsSorted, this._uuid, this._vp.reverseDepthSorter);
-        this._zSubOrder = newSubOrder;
-        insertSorted(this._vp._drawnObjIdsSorted, this._uuid, this._vp.reverseDepthSorter);
+        changeObjOrdering("drawable", this, vobj => vobj._zSubOrder = newSubOrder);
     }
 
     setSize(size) {
