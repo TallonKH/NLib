@@ -300,9 +300,7 @@ export default class NViewport {
   }
 
   callGlobalEvent(eventName, data) {
-    console.log(this._globalEventChannels.get(eventName)._listeners);
     for (const [key, func] of this._globalEventChannels.get(eventName)._listeners){
-      console.log(func);
       func(this, data);
     }
   }
@@ -672,7 +670,8 @@ export default class NViewport {
 
     if (pointerChanged) {
       this.callGlobalEvent("prePointerMove", {
-        pointerEvent: e
+        pointerEvent: e,
+        position: this._pointerPos,
       });
 
       // dragging
@@ -684,11 +683,15 @@ export default class NViewport {
         if (this._pointerDragging || this._pointerElemDragDistance >= this.nonDragThreshold) {
           if (!this._pointerDragging) {
             this.callGlobalEvent("prePointerDragStart", {
-              pointerEvent: e
+              pointerEvent: e,
+              startPosition: this._mouseDownPos,
+              position: this._pointerPos,
             });
           }
           this.callGlobalEvent("prePointerDrag", {
-            pointerEvent: e
+            pointerEvent: e,
+            startPosition: this._mouseDownPos,
+            position: this._pointerPos,
           });
           for (const uuid of this.getRegistryItemsSorted("held")) {
             const obj = this._allObjs[uuid];
@@ -701,11 +704,15 @@ export default class NViewport {
           if (!this._pointerDragging) {
             this._pointerDragging = true;
             this.callGlobalEvent("postPointerDragStart", {
-              pointerEvent: e
+              pointerEvent: e,
+              startPosition: this._mouseDownPos,
+              position: this._pointerPos,
             });
           }
           this.callGlobalEvent("postPointerDrag", {
-            pointerEvent: e
+            pointerEvent: e,
+            startPosition: this._mouseDownPos,
+            position: this._pointerPos,
           });
         }
       }
@@ -797,7 +804,8 @@ export default class NViewport {
 
     if (pointerChanged) {
       this.callGlobalEvent("postPointerMove", {
-        pointerEvent: e
+        pointerEvent: e,
+        position: this._pointerPos,
       });
     }
   }
@@ -982,7 +990,8 @@ export default class NViewport {
         this._mouseDownPos = this.divToViewportSpace(this._mouseDownElemPos);
         this._mouseDown = true;
         this.callGlobalEvent("preMouseDown", {
-          pointerEvent: e
+          pointerEvent: e,
+          position: this._pointerPos,
         });
         for (const uuid of this.getRegistryItemsSorted("pointerAware")) {
           const obj = this._allObjs[uuid];
@@ -996,7 +1005,8 @@ export default class NViewport {
           }
         }
         this.callGlobalEvent("postMouseDown", {
-          pointerEvent: e
+          pointerEvent: e,
+          position: this._pointerPos,
         });
         this._pointerUpdated();
         e.preventDefault();
@@ -1007,7 +1017,9 @@ export default class NViewport {
       // the mouseDown check is necessary for when the click starts outside the canvas
       if (this._isActive && this._mouseDown) {
         this.callGlobalEvent("preMouseUp", {
-          pointerEvent: e
+          pointerEvent: e,
+          startPosition: this._mouseDownPos,
+          position: this._pointerPos,
         });
         this._mouseDown = false;
         for (const uuid of this.getRegistryItemsSorted("pointerAware")) {
@@ -1025,11 +1037,15 @@ export default class NViewport {
         const isDrag = this._pointerElemDragDistance >= this.nonDragThreshold;
         if (isDrag) {
           this.callGlobalEvent("prePointerDragEnd", {
-            pointerEvent: e
+            pointerEvent: e,
+            startPosition: this._mouseDownPos,
+            position: this._pointerPos,
           });
         } else {
           this.callGlobalEvent("preMouseClick", {
-            pointerEvent: e
+            pointerEvent: e,
+            startPosition: this._mouseDownPos,
+            position: this._pointerPos,
           });
         }
         for (const uuid of this.getRegistryItemsSorted("held")) {
@@ -1049,15 +1065,21 @@ export default class NViewport {
         this.unregisterAllObjsFor("held");
         this.unregisterAllObjsFor("dragged");
         this.callGlobalEvent("postMouseUp", {
-          pointerEvent: e
+          pointerEvent: e,
+          startPosition: this._mouseDownPos,
+          position: this._pointerPos,
         });
         if (isDrag) {
           this.callGlobalEvent("postPointerDragEnd", {
-            pointerEvent: e
+            pointerEvent: e,
+            startPosition: this._mouseDownPos,
+            position: this._pointerPos,
           });
         } else {
           this.callGlobalEvent("postMouseClick", {
-            pointerEvent: e
+            pointerEvent: e,
+            startPosition: this._mouseDownPos,
+            position: this._pointerPos,
           });
         }
         this._pointerUpdated();

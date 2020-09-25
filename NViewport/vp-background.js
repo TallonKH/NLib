@@ -10,6 +10,8 @@ export default class VPBackground extends VPObject {
         });
         this.colorHex = "#1a1a1a";
         this.color = NColor.fromHex(this.colorHex);
+
+        this.draggable = true;
     }
 
     setColor(color) {
@@ -39,27 +41,33 @@ export default class VPBackground extends VPObject {
 
     onClicked(mouseClickEvent) {
         super.onClicked(mouseClickEvent);
-        this._vp.setZoomFactor(1, NPoint.ZERO);
-        this._vp.recenter();
+        // this._vp.setZoomFactor(1, NPoint.ZERO);
+        // this._vp.recenter();
     }
 
     onDragStarted(pointerMoveEvent) {
         super.onDragStarted(pointerMoveEvent);
-        if (this._vp._navigable) {
-            this.suggestCursor("move");
+        if(this.draggable){
+            if (this._vp._navigable) {
+                this.suggestCursor("move");
+            }
         }
     }
 
     onDragged(pointerMoveEvent) {
         super.onDragged(pointerMoveEvent);
-        if (this._vp._navigable) {
-            this._vp.setPanCenter(this._vp._panCenter.addp(this._vp._pointerElemDelta), true);
+        if(this.draggable){
+            if (this._vp._navigable) {
+                this._vp.setPanCenter(this._vp._panCenter.addp(this._vp._pointerElemDelta), true);
+            }
         }
     }
 
     onDragEnded(pointerUpEvent) {
         super.onDragEnded(pointerUpEvent);
-        this.unsuggestCursor("move");
+        if(this.draggable){
+            this.unsuggestCursor("move");
+        }
     }
 
     onWheel(wheelEvent) {

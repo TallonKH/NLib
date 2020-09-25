@@ -281,6 +281,23 @@ export default class NPoint {
 		return a.subtractp(b).length();
 	}
 
+	nearest(points){
+		let shortestDistSq = NPoint.distSquared(this, points[0]);
+		let bestIndex = 0;
+		for(let i=1; i<points.length; i++){
+			const currentDistSq = NPoint.distSquared(this, points[i]);
+			if(currentDistSq < shortestDistSq){
+				bestIndex = i;
+				shortestDistSq = currentDistSq;
+			}
+		}
+		return {
+			index: bestIndex,
+			distSq: shortestDistSq,
+			point: points[bestIndex],
+		};
+	}
+
 	distToSegmentSquared(v, w) {
 		const l2 = NPoint.distSquared(v, w);
 		if (l2 === 0) {
