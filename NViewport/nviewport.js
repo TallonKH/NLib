@@ -28,10 +28,12 @@ export default class NViewport {
     outOfBoundsStyle = "#111",
     minimizeThresholdX = 100,
     minimizeThresholdY = 100,
+    updateMethod = "animframe", //animframe, timeout, idle
   } = {}) {
     this._container;
     this._canvas;
     this._outOfBoundsStyle = outOfBoundsStyle;
+    this._updateMethod = updateMethod;
 
     this._isActive = false;
     this._enabled = true;
@@ -302,7 +304,7 @@ export default class NViewport {
   }
 
   callGlobalEvent(eventName, data) {
-    for (const [key, func] of this._globalEventChannels.get(eventName)._listeners){
+    for (const [key, func] of this._globalEventChannels.get(eventName)._listeners) {
       func(this, data);
     }
   }
@@ -409,7 +411,7 @@ export default class NViewport {
     this.queueRedraw();
 
     // update mouse logic in case an object is removed that was preventing a lower object from being touched
-    if(this._isActive){
+    if (this._isActive) {
       this._pointerUpdated();
     }
   }
@@ -500,7 +502,17 @@ export default class NViewport {
   queueUpdate() {
     if (!this._pendingUpdate) {
       this._pendingUpdate = true;
-      window.requestAnimationFrame(this._update);
+      switch (this._updateMethod) {
+        case "animframe":
+          window.requestAnimationFrame(this._update);
+          break;
+        case "timeout":
+          window.setTimeout(this._update, 0);
+          break;
+        case "idle":
+          window.requestIdleCallback(this._update);
+          break;
+      }
     }
   }
 
@@ -820,7 +832,7 @@ export default class NViewport {
       keyEvent: event,
     });
   }
-  
+
   keyReleased(key, event) {
     this.callGlobalEvent("keyRelease", {
       key: key,
@@ -948,7 +960,7 @@ export default class NViewport {
       newPanCenter = newPanCenter.clamp1p(clamping);
     }
 
-    if(this._isActive){
+    if (this._isActive) {
       this._panCenter = newPanCenter;
       if (!quiet) {
         this._pointerUpdated();
@@ -1129,7 +1141,7 @@ export default class NViewport {
     }
   }
 
-  _cursorChange(type){
+  _cursorChange(type) {
     this._canvas.style.cursor = type;
   }
 }

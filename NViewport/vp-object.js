@@ -74,10 +74,7 @@ export default class VPObject {
         return inBounds && this._position.subtractp(point).lengthSquared() < Math.pow(this._size, 2);
     }
 
-    draw(ctx) {
-        ctx.fillStyle = "red";
-        this.fillCircle(ctx);
-    }
+    draw(ctx) {}
 
     strokeLine(ctx, posA, posB) {
         ctx.beginPath();
