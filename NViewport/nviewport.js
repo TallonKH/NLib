@@ -409,7 +409,9 @@ export default class NViewport {
     this.queueRedraw();
 
     // update mouse logic in case an object is removed that was preventing a lower object from being touched
-    this._pointerUpdated();
+    if(this._isActive){
+      this._pointerUpdated();
+    }
   }
 
   forgetAll() {
@@ -668,7 +670,7 @@ export default class NViewport {
     this._pointerElemDragDelta = newPointerElemPos.subtractp(this._mouseDownElemPos);
     this._pointerDelta = newPointerPos.subtractp(this._pointerPos);
     this._pointerPos = newPointerPos;
-    this._pointerWithinBounds = this.isInBounds(this._pointerPos);
+    this._pointerWithinBounds = this._pointerWithinElement && this.isInBounds(this._pointerPos);
 
     if (pointerChanged) {
       this.callGlobalEvent("prePointerMove", {
@@ -924,7 +926,7 @@ export default class NViewport {
   }
 
   isInBounds(point, padding = NPoint.ZERO) {
-    return (!this._activeAreaBounded) || point.withinRect(this._activeAreaCorners[0].addp(padding));
+    return ((!this._activeAreaBounded) || point.withinRect(this._activeAreaCorners[0].addp(padding)));
   }
 
   clampToBounds(point, padding = NPoint.ZERO) {
@@ -945,13 +947,14 @@ export default class NViewport {
       const clamping = corner.subtractp(this._divCenter).addp(this._activeAreaPadding).max1(0);
       newPanCenter = newPanCenter.clamp1p(clamping);
     }
-    // if (!this._panCenter.equals(newPanCenter)) {
-    this._panCenter = newPanCenter;
-    if (!quiet) {
-      this._pointerUpdated();
+
+    if(this._isActive){
+      this._panCenter = newPanCenter;
+      if (!quiet) {
+        this._pointerUpdated();
+      }
+      this.queueRedraw();
     }
-    this.queueRedraw();
-    // }
     this._viewSpaceUpdated();
   }
 
@@ -1120,9 +1123,13 @@ export default class NViewport {
   _refreshCursorType() {
     for (const type of this._cursorPriorities) {
       if (this._cursorSuggests[type]) {
-        this._canvas.style.cursor = type;
+        this._cursorChange(type);
         break;
       }
     }
+  }
+
+  _cursorChange(type){
+    this._canvas.style.cursor = type;
   }
 }

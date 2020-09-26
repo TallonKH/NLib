@@ -109,22 +109,24 @@ export default class VPObject {
     /**
      * Return true if this object should indiscriminately block all pointer-based events from reaching lower objects.
      * 
-     * The affected events are: (onPointerAwarenessStarted, onPointerAwarenessEnded),
+     * The affected events are: 
+     * (onPointerAwarenessStarted, onPointerAwarenessEnded),
      * (onPointerOverlapStarted, onPointerOverlapMovement, onPointerOverlapEnded),
      * (onPressed, onUnpressed, onMouseUp, onClicked),
      * (onDragStarted, onDragged, onDragEnded),
      * (onWheel)
      * 
-     * Default behavior: block.
+     * Default behavior: do not block.
      */
     blockAllPointerEvents() {
-        return true;
+        return false;
     }
 
     /**
      * Return true if this object should indiscriminately ignore all pointer-based events
      * 
-     * The affected events are: (onPointerAwarenessStarted, onPointerAwarenessEnded),
+     * The affected events are: 
+     * (onPointerAwarenessStarted, onPointerAwarenessEnded),
      * (onPointerOverlapStarted, onPointerOverlapMovement, onPointerOverlapEnded),
      * (onPressed, onUnpressed, onMouseUp, onClicked),
      * (onDragStarted, onDragged, onDragEnded),
