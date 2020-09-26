@@ -318,7 +318,7 @@ export default class VPObject {
      */
     onWheel(wheelEvent) {}
 
-    onForgotten() {
+    onForget() {
         this.unsuggestAllCursors();
     }
 }

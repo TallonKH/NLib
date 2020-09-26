@@ -63,16 +63,17 @@ export default class StateManager{
 
     listen(name, callback, initialTrigger=true){
         StateManager.listenerIdCounter++;
+        const id = StateManager.listenerIdCounter;
         const dat = this.ensureExists(name);
-        dat._listeners[StateManager.listenerIdCounter] = callback;
+        dat._listeners[id] = callback;
         if(initialTrigger){
             this.alertListener(name, {
                 name: name,
                 prevValue: dat._value,
                 changer: null,
-            });
+            }, id);
         }
-        return StateManager.listenerIdCounter;
+        return id;
     }
 
     alertListener(name, info, targetListenerId=-1){

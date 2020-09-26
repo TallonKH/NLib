@@ -214,6 +214,8 @@ export default class NViewport {
     this._addGlobalEventChannel("preTick");
     this._addGlobalEventChannel("postTick");
     this._addGlobalEventChannel("resize");
+    this._addGlobalEventChannel("keyPress");
+    this._addGlobalEventChannel("keyRelease");
   }
 
   _setupVisibilityListener() {
@@ -810,14 +812,24 @@ export default class NViewport {
     }
   }
 
-  keyPressed(code) {}
-
-  keyReleased(code) {}
+  keyPressed(key, event) {
+    this.callGlobalEvent("keyPress", {
+      key: key,
+      keyEvent: event,
+    });
+  }
+  
+  keyReleased(code, event) {
+    this.callGlobalEvent("keyRelease", {
+      key: key,
+      keyEvent: event,
+    });
+  }
 
   _setupKeyListeners() {
     document.addEventListener("keydown", function (e) {
-      const keyCode = e.key;
-      switch (keyCode) {
+      const key = e.key;
+      switch (key) {
         case "Shift":
           this._shiftDown = true;
           break;
@@ -829,16 +841,16 @@ export default class NViewport {
           break;
         default:
           if (this._pointerWithinElement) {
-            this._downKeys.add(keyCode);
-            this.keyPressed(keyCode);
+            this._downKeys.add(key);
+            this.keyPressed(key);
           }
       }
     }.bind(this));
 
     // global key up
     document.addEventListener("keyup", function (e) {
-      const keyCode = e.key;
-      switch (keyCode) {
+      const key = e.key;
+      switch (key) {
         case "Shift":
           this._shiftDown = false;
           break;
@@ -849,8 +861,8 @@ export default class NViewport {
           this._altDown = false;
           break;
         default:
-          if (this._downKeys.delete(keyCode)) {
-            this.keyReleased(keyCode);
+          if (this._downKeys.delete(key)) {
+            this.keyReleased(key);
           }
       }
 
