@@ -819,7 +819,7 @@ export default class NViewport {
     });
   }
   
-  keyReleased(code, event) {
+  keyReleased(key, event) {
     this.callGlobalEvent("keyRelease", {
       key: key,
       keyEvent: event,
