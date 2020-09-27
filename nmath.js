@@ -88,3 +88,13 @@ export function gaussianGenerator(mean, stdev) {
 		return -retval;
 	}
 }
+
+const degRadConst = Math.PI / 180;
+export function toRads(degs){
+	return degs * degRadConst;
+}
+
+const radDegConst = 180 / Math.PI;
+export function toDegrees(rads){
+	return rads * radDegConst;
+}

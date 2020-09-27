@@ -281,6 +281,10 @@ export default class NPoint {
 		return a.subtractp(b).length();
 	}
 
+	static fromAngle(rads){
+		return new NPoint(Math.cos(rads), Math.sin(rads));
+	}
+
 	nearest(points){
 		let shortestDistSq = NPoint.distSquared(this, points[0]);
 		let bestIndex = 0;
