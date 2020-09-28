@@ -80,4 +80,14 @@ export default class VPBackground extends VPObject {
             }
         }
     }
+
+    // allow events to reach global channel unhindered
+    blockClickEvent(mouseClickEvent) {
+        return false;
+    }
+    
+    // allow events to reach global channel unhindered
+    blockOverlapEvent(pointerMoveEvent) {
+        return false;
+    }
 }

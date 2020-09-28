@@ -29,11 +29,14 @@ export default class NViewport {
     minimizeThresholdX = 100,
     minimizeThresholdY = 100,
     updateMethod = "animframe", //animframe, timeout, idle
+    contextArgs = {}, // ie: {alpha: false}
   } = {}) {
     this._container;
     this._canvas;
     this._outOfBoundsStyle = outOfBoundsStyle;
     this._updateMethod = updateMethod;
+
+    this._contextArgs = contextArgs;
 
     this._isActive = false;
     this._enabled = true;
@@ -80,6 +83,9 @@ export default class NViewport {
     // the offset of the origin to the viewport center. In screen space.
     this._panCenter = NPoint.ZERO;
     this.panSensitivity = panSensitivity;
+
+    this._mouseDownConsumed = false;
+    this._mouseDownBlocked = false;
 
     this._pointerDragging = false;
     this._mouseDown = false;
@@ -640,14 +646,15 @@ export default class NViewport {
     this._container.style.background = this._outOfBoundsStyle;
 
     this._canvas = document.createElement("canvas");
+    this._canvas.style.background = this._outOfBoundsStyle;
     this._canvas.style.width = "100%";
     this._canvas.style.height = "100%";
     this._canvas.style.lineHeight = 0;
     this._container.style.margin = 0;
     this._container.style.padding = 0;
-    this._canvas.style.background = "transparent";
     this._container.appendChild(this._canvas);
-    this._ctx = this._canvas.getContext("2d");
+    this._ctx = this._canvas.getContext("2d", this._contextArgs);
+    delete this._contextArgs; // not needed anymore
   }
 
   divToViewportSpace(npoint) {
@@ -685,6 +692,8 @@ export default class NViewport {
     this._pointerWithinBounds = this._pointerWithinElement && this.isInBounds(this._pointerPos);
 
     if (pointerChanged) {
+      let consumers = [];
+      let blockers = [];
       this.callGlobalEvent("prePointerMove", {
         pointerEvent: e,
         position: this._pointerPos,
@@ -723,12 +732,20 @@ export default class NViewport {
               pointerEvent: e,
               startPosition: this._mouseDownPos,
               position: this._pointerPos,
+              downConsumed: !!this._mouseDownConsumers.length,
+              downBlocked: !!this._mouseDownBlockers.length,
+              downConsumers: this._mouseDownConsumers,
+              downBlockers: this._mouseDownBlockers,
             });
           }
           this.callGlobalEvent("postPointerDrag", {
             pointerEvent: e,
             startPosition: this._mouseDownPos,
             position: this._pointerPos,
+            downConsumed: !!this._mouseDownConsumers.length,
+            downBlocked: !!this._mouseDownBlockers.length,
+            downConsumers: this._mouseDownConsumers,
+            downBlockers: this._mouseDownBlockers,
           });
         }
       }
@@ -856,7 +873,7 @@ export default class NViewport {
         default:
           if (this._pointerWithinElement) {
             this._downKeys.add(key);
-            this.keyPressed(key);
+            this.keyPressed(key, e);
           }
       }
     }.bind(this));
@@ -876,7 +893,7 @@ export default class NViewport {
           break;
         default:
           if (this._downKeys.delete(key)) {
-            this.keyReleased(key);
+            this.keyReleased(key, e);
           }
       }
 
@@ -990,7 +1007,9 @@ export default class NViewport {
     }.bind(this));
 
     this._container.addEventListener("wheel", function (e) {
-      if (this._isActive) {
+      if (this._isActive && this._pointerWithinBounds) {
+        let consumers = [];
+        let blockers = [];
         this.callGlobalEvent("preMouseWheel", {
           pointerEvent: e
         });
@@ -999,19 +1018,27 @@ export default class NViewport {
           if (obj.ignoreWheelEvent(e)) {
             continue;
           }
+          consumers.push(obj);
           obj.onWheel(e);
           if (obj.blockWheelEvent(e)) {
+            blockers.push(obj);
             break;
           }
         }
         this.callGlobalEvent("postMouseWheel", {
-          pointerEvent: e
+          consumed: !!consumers.length,
+          blocked: !!blockers.length,
+          consumers: consumers,
+          blockers: blockers,
+          pointerEvent: e,
         });
         e.preventDefault();
       }
     }.bind(this));
 
     this._container.addEventListener("pointerdown", function (e) {
+      this._mouseDownConsumers = [];
+      this._mouseDownBlockers = [];
       if (this._isActive && this._pointerWithinBounds) {
         this._mouseDownElemPos = this._pointerElemPos;
         this._mouseDownPos = this.divToViewportSpace(this._mouseDownElemPos);
@@ -1025,13 +1052,19 @@ export default class NViewport {
           if (obj.ignoreClickEvent(e)) {
             continue;
           }
+          this._mouseDownConsumers.push(obj);
           this.registerObjFor("held", obj);
           obj.onPressed(e);
           if (obj.blockClickEvent(e)) {
+            this._mouseDownBlockers.push(obj);
             break;
           }
         }
         this.callGlobalEvent("postMouseDown", {
+          consumed: !!this._mouseDownConsumers.length,
+          blocked: !!this._mouseDownBlockers.length,
+          consumers: this._mouseDownConsumers,
+          blockers: this._mouseDownBlockers,
           pointerEvent: e,
           position: this._pointerPos,
         });
@@ -1043,23 +1076,14 @@ export default class NViewport {
     document.addEventListener("pointerup", function (e) {
       // the mouseDown check is necessary for when the click starts outside the canvas
       if (this._isActive && this._mouseDown) {
+        let consumed = false;
+        let blocked = false;
         this.callGlobalEvent("preMouseUp", {
           pointerEvent: e,
           startPosition: this._mouseDownPos,
           position: this._pointerPos,
         });
         this._mouseDown = false;
-        for (const uuid of this.getRegistryItemsSorted("pointerAware")) {
-          const obj = this._allObjs[uuid];
-
-          if (obj.ignoreClickEvent(e)) {
-            continue;
-          }
-          obj.onMouseUp(e);
-          if (obj.blockClickEvent(e)) {
-            break;
-          }
-        }
 
         const isDrag = this._pointerElemDragDistance >= this.nonDragThreshold;
         if (isDrag) {
@@ -1075,6 +1099,21 @@ export default class NViewport {
             position: this._pointerPos,
           });
         }
+
+        for (const uuid of this.getRegistryItemsSorted("pointerAware")) {
+          const obj = this._allObjs[uuid];
+
+          if (obj.ignoreClickEvent(e)) {
+            continue;
+          }
+          consumed = true;
+          obj.onMouseUp(e);
+          if (obj.blockClickEvent(e)) {
+            blocked = true;
+            break;
+          }
+        }
+
         for (const uuid of this.getRegistryItemsSorted("held")) {
           const obj = this._allObjs[uuid];
           obj.onUnpressed(e);
@@ -1095,18 +1134,36 @@ export default class NViewport {
           pointerEvent: e,
           startPosition: this._mouseDownPos,
           position: this._pointerPos,
+          upConsumed: consumed,
+          upBlocked: blocked,
+          downConsumed: !!this._mouseDownConsumers.length,
+          downBlocked: !!this._mouseDownBlockers.length,
+          downConsumers: this._mouseDownConsumers,
+          downBlockers: this._mouseDownBlockers,
         });
         if (isDrag) {
           this.callGlobalEvent("postPointerDragEnd", {
             pointerEvent: e,
             startPosition: this._mouseDownPos,
             position: this._pointerPos,
+            upConsumed: consumed,
+            upBlocked: blocked,
+            downConsumed: !!this._mouseDownConsumers.length,
+            downBlocked: !!this._mouseDownBlockers.length,
+            downConsumers: this._mouseDownConsumers,
+            downBlockers: this._mouseDownBlockers,
           });
         } else {
           this.callGlobalEvent("postMouseClick", {
             pointerEvent: e,
             startPosition: this._mouseDownPos,
             position: this._pointerPos,
+            upConsumed: consumed,
+            upBlocked: blocked,
+            downConsumed: !!this._mouseDownConsumers.length,
+            downBlocked: !!this._mouseDownBlockers.length,
+            downConsumers: this._mouseDownConsumers,
+            downBlockers: this._mouseDownBlockers,
           });
         }
         this._pointerUpdated();
