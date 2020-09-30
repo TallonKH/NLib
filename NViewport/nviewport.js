@@ -371,7 +371,9 @@ export default class NViewport {
     const dat = this._objRegistries.get(registryName);
     dat._idSet.forEach(id => this._allObjs[id]._registeredStates.set(registryName, false));
     dat._idSet.clear();
-    dat._sorted.length = 0;
+    if (dat._sorted !== undefined) {
+      dat._sorted.length = 0;
+    }
   }
 
   addObjRegistry(registryName, sorter = null, onRegister = Function.prototype) {
