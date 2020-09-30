@@ -1020,6 +1020,9 @@ export default class NViewport {
           }
           consumers.push(obj);
           obj.onWheel(e);
+          if (obj._skipToGlobal) {
+            break;
+          }
           if (obj.blockWheelEvent(e)) {
             blockers.push(obj);
             break;
@@ -1055,6 +1058,9 @@ export default class NViewport {
           this._mouseDownConsumers.push(obj);
           this.registerObjFor("held", obj);
           obj.onPressed(e);
+          if (obj._skipToGlobal) {
+            break;
+          }
           if (obj.blockClickEvent(e)) {
             this._mouseDownBlockers.push(obj);
             break;
@@ -1076,8 +1082,8 @@ export default class NViewport {
     document.addEventListener("pointerup", function (e) {
       // the mouseDown check is necessary for when the click starts outside the canvas
       if (this._isActive && this._mouseDown) {
-        let consumed = false;
-        let blocked = false;
+        let consumers = [];
+        let blockers = [];
         this.callGlobalEvent("preMouseUp", {
           pointerEvent: e,
           startPosition: this._mouseDownPos,
@@ -1106,10 +1112,13 @@ export default class NViewport {
           if (obj.ignoreClickEvent(e)) {
             continue;
           }
-          consumed = true;
+          consumers.push(obj);
           obj.onMouseUp(e);
+          if (obj._skipToGlobal) {
+            break;
+          }
           if (obj.blockClickEvent(e)) {
-            blocked = true;
+            blockers.push(obj);
             break;
           }
         }
@@ -1134,8 +1143,8 @@ export default class NViewport {
           pointerEvent: e,
           startPosition: this._mouseDownPos,
           position: this._pointerPos,
-          upConsumed: consumed,
-          upBlocked: blocked,
+          upConsumed: consumers,
+          upBlocked: blockers,
           downConsumed: !!this._mouseDownConsumers.length,
           downBlocked: !!this._mouseDownBlockers.length,
           downConsumers: this._mouseDownConsumers,
@@ -1146,8 +1155,8 @@ export default class NViewport {
             pointerEvent: e,
             startPosition: this._mouseDownPos,
             position: this._pointerPos,
-            upConsumed: consumed,
-            upBlocked: blocked,
+            upConsumed: consumers,
+            upBlocked: blockers,
             downConsumed: !!this._mouseDownConsumers.length,
             downBlocked: !!this._mouseDownBlockers.length,
             downConsumers: this._mouseDownConsumers,
@@ -1158,8 +1167,8 @@ export default class NViewport {
             pointerEvent: e,
             startPosition: this._mouseDownPos,
             position: this._pointerPos,
-            upConsumed: consumed,
-            upBlocked: blocked,
+            upConsumed: consumers,
+            upBlocked: blockers,
             downConsumed: !!this._mouseDownConsumers.length,
             downBlocked: !!this._mouseDownBlockers.length,
             downConsumers: this._mouseDownConsumers,

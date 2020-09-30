@@ -13,6 +13,7 @@ export default class VPObject {
         mouseListening = false,
         zOrder = 0,
         tickable = false,
+        skipToGlobal = false,
     } = {}) {
         this._vp = vp;
         this._uuid = idCounter++;
@@ -32,6 +33,12 @@ export default class VPObject {
 
         this._size = 10;
         this._suggestedCursors = {};
+
+        // TODO implement?
+        // this._eventMirror = eventMirror;
+
+        // block other objects without blocking the global event. Will still consume.
+        this._skipToGlobal = skipToGlobal;
     }
 
     static globalInit() {}
