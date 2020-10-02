@@ -39,9 +39,9 @@ export default class StateManager{
         return dat._value;
     }
 
-    perform(name, func){
+    perform(name, func, changer=null){
         const dat = this.ensureExists(name);
-        func(dat);
+        func(dat._value);
         this.alertListener(name, {
             name: name,
             prevValue: undefined, // TODO figure out if this is needed

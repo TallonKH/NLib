@@ -865,12 +865,18 @@ export default class NViewport {
       switch (key) {
         case "Shift":
           this._shiftDown = true;
+          this._downKeys.add(key);
+          this.keyPressed(key, e);
           break;
         case "Control":
           this._ctrlDown = true;
+          this._downKeys.add(key);
+          this.keyPressed(key, e);
           break;
         case "Alt":
           this._altDown = true;
+          this._downKeys.add(key);
+          this.keyPressed(key, e);
           break;
         default:
           if (this._pointerWithinElement) {
@@ -886,12 +892,21 @@ export default class NViewport {
       switch (key) {
         case "Shift":
           this._shiftDown = false;
+          if (this._downKeys.delete(key)) {
+            this.keyReleased(key, e);
+          }
           break;
         case "Control":
           this._ctrlDown = false;
+          if (this._downKeys.delete(key)) {
+            this.keyReleased(key, e);
+          }
           break;
         case "Alt":
           this._altDown = false;
+          if (this._downKeys.delete(key)) {
+            this.keyReleased(key, e);
+          }
           break;
         default:
           if (this._downKeys.delete(key)) {

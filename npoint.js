@@ -47,8 +47,8 @@ export default class NPoint {
 		);
 	}
 
-	toString() {
-		return `(${this.x.toFixed(3)}, ${this.y.toFixed(3)})`;
+	toString(floatDigits = 3) {
+		return `(${this.x.toFixed(floatDigits)}, ${this.y.toFixed(floatDigits)})`;
 	}
 
 	operate(func) {
