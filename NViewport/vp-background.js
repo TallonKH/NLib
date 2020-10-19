@@ -17,7 +17,7 @@ export default class VPBackground extends VPObject {
     setColor(color) {
         this.color = color;
         this.colorHex = color.toHex();
-        this._vp.queueRedraw();
+        this.requestRedraw();
     }
 
     draw(ctx) {

@@ -5,7 +5,8 @@ import {
 } from "../nmath.js";
 import {
   insertSorted,
-  removeSorted
+  removeSorted,
+  findSorted,
 } from "../nmisc.js";
 
 export default class NViewport {
@@ -30,11 +31,13 @@ export default class NViewport {
     minimizeThresholdY = 100,
     updateMethod = "animframe", //animframe, timeout, idle
     contextArgs = {}, // ie: {alpha: false}
+    needsClearing = false,
   } = {}) {
     this._container;
     this._canvas;
     this._outOfBoundsStyle = outOfBoundsStyle;
     this._updateMethod = updateMethod;
+    this._boundingRect;
 
     this._contextArgs = contextArgs;
 
@@ -42,6 +45,7 @@ export default class NViewport {
     this._enabled = true;
     this._setupDone = false;
     this._visible = false;
+    this.forceVisible = false;
     this._isMinimized = false;
     this._minimizeThresholdX = minimizeThresholdX;
     this._minimizeThresholdY = minimizeThresholdY;
@@ -51,6 +55,7 @@ export default class NViewport {
 
     this.setPixelRatio(pixelRatio);
 
+    this._needsClearing = needsClearing;
     this._activeAreaBounded = activeAreaBounded; // if false, canvas is infinite in all directions
     this._baseActiveAreaDims; // assigned by setBaseActiveDims
     this._activeAreaCorners; // assigned by setBaseActiveDims
@@ -182,7 +187,7 @@ export default class NViewport {
         this.updateActiveState();
         this.onSetup();
         window.setTimeout(function () {
-          this.queueRedraw();
+          this.queueRedraw(0);
         }.bind(this), 0);
       }.bind(this), 0);
     }
@@ -256,11 +261,11 @@ export default class NViewport {
   }
 
   updateActiveState() {
-    const newState = this._setupDone && this._enabled && this._visible && (!this._isMinimized);
+    const newState = this._setupDone && this._enabled && (this._visible || this.forceVisible) && (!this._isMinimized);
     if (newState ^ this._isActive) {
       this._isActive = newState;
       if (newState) {
-        this.queueRedraw();
+        this.queueRedraw(0);
         this.onActivated();
       } else {
         this.onDeactivated();
@@ -317,35 +322,37 @@ export default class NViewport {
 
   registerObj(obj) {
     this._allObjs[obj._uuid] = obj;
-    if (obj._drawable) {
-      this.registerObjFor("drawable", obj);
-    }
     if (obj._mouseListening) {
       this.registerObjFor("mouseListening", obj);
     }
     if (obj._tickable) {
       this.registerObjFor("tickable", obj);
     }
-    this.queueRedraw();
+    if (obj._drawable) {
+      this.queueRedraw(this.registerObjFor("drawable", obj));
+    }
   }
 
   registryForHas(registryName, obj) {
     return this._objRegistries.get(registryName)._idSet.has(obj._uuid);
   }
 
+  /** Returns sorted index. If not sorted, returns nothing */
   registerObjFor(registryName, obj) {
-    // set appropriate object field
+    // set appropriate object field to sorted index (or true if unsorted)
     obj._registeredStates.set(registryName, true);
 
     // add to registry
     const dat = this._objRegistries.get(registryName);
     dat._idSet.add(obj._uuid);
     dat._onRegister(obj);
+
     if (dat._sorted !== undefined) {
-      insertSorted(dat._sorted, obj._uuid, dat._sorter);
+      return insertSorted(dat._sorted, obj._uuid, dat._sorter);
     }
   }
 
+  /** Returns sorted index. If not sorted, returns nothing */
   unregisterObjFor(registryName, obj) {
     // set appropriate object field
     obj._registeredStates.set(registryName, false);
@@ -356,8 +363,13 @@ export default class NViewport {
     if (dat._sorted !== undefined) {
       dat._sorted.splice(dat._sorted.indexOf(obj._uuid), 1);
       // TODO figure out why removeSorted breaks
-      removeSorted(dat._sorted, obj._uuid, dat._sorter);
+      return removeSorted(dat._sorted, obj._uuid, dat._sorter);
     }
+  }
+
+  findRegisteredObjSorted(registryName, obj) {
+    const dat = this._objRegistries.get(registryName);
+    return findSorted(dat._sorted, obj._uuid, dat._sorter);
   }
 
   changeObjOrdering(registryName, obj, func) {
@@ -408,6 +420,12 @@ export default class NViewport {
     }
 
     obj.onForget();
+
+    // deal with drawable separately
+    if (obj._registeredStates.get("drawable") === true) {
+      this.queueRedraw(this.unregisterObjFor("drawable", obj));
+    }
+
     // unregister from every registry
     for (const [registryName, state] of obj._registeredStates) {
       if (state) {
@@ -415,8 +433,6 @@ export default class NViewport {
       }
     }
     delete this._allObjs[obj._uuid];
-
-    this.queueRedraw();
 
     // update mouse logic in case an object is removed that was preventing a lower object from being touched
     if (this._isActive) {
@@ -554,6 +570,7 @@ export default class NViewport {
   }
 
   _handleResize(e) {
+    this._boundingRect = this._container.getBoundingClientRect();
     const resizeRect = e[0].contentRect;
     this._isMinimized = (resizeRect.width <= this._minimizeThresholdX || resizeRect.height <= this._minimizeThresholdY);
     this.updateActiveState();
@@ -604,7 +621,9 @@ export default class NViewport {
   _redraw() {
     if (this._isActive) {
       this._ctx.resetTransform();
-      this._ctx.clearRect(0, 0, this._canvasDims.x, this._canvasDims.y);
+      if (this._needsClearing) {
+        this._ctx.clearRect(0, 0, this._canvasDims.x, this._canvasDims.y);
+      }
 
       // matrix version of viewportToDivSpace
       // canvas transform is in canvas space, so pixelRatio must be applied to both scale and offset
@@ -624,8 +643,7 @@ export default class NViewport {
       }
 
       for (const uuid of this.getRegistryItemsSorted("drawable")) {
-        const obj = this._allObjs[uuid];
-        obj.draw(this._ctx);
+        this._allObjs[uuid].draw(this._ctx);
       }
 
       if (this._activeAreaBounded) {
@@ -677,10 +695,9 @@ export default class NViewport {
   _pointerUpdated(e) {
     let newPointerElemPos = this._pointerElemPos;
     if (e) {
-      const boundingRect = this._container.getBoundingClientRect();
       newPointerElemPos = new NPoint(
-        e.pageX - boundingRect.left,
-        e.pageY - boundingRect.top
+        e.pageX - this._boundingRect.left,
+        e.pageY - this._boundingRect.top
       );
     }
     this._pointerElemDelta = newPointerElemPos.subtractp(this._pointerElemPos);
@@ -694,8 +711,6 @@ export default class NViewport {
     this._pointerWithinBounds = this._pointerWithinElement && this.isInBounds(this._pointerPos);
 
     if (pointerChanged) {
-      let consumers = [];
-      let blockers = [];
       this.callGlobalEvent("prePointerMove", {
         pointerEvent: e,
         position: this._pointerPos,
@@ -999,7 +1014,7 @@ export default class NViewport {
       if (!quiet) {
         this._pointerUpdated();
       }
-      this.queueRedraw();
+      this.queueRedraw(0);
     }
     this._viewSpaceUpdated();
   }

@@ -21,6 +21,8 @@ export default class NColor {
         Object.freeze(this);
     }
 
+    static TRANSPARENT = new NColor("RGB", 0, 0, 0, 0);
+
     static conversionMatrix = {
         "RGB": {
             "RGB": identity,
@@ -274,7 +276,7 @@ export default class NColor {
     operate(func, operateAlpha = false) {
         let alpha = 1.0;
         if (operateAlpha) {
-            alpha = func(colorA.a, colorB.a, colorA, colorB);
+            alpha = func(this.alpha, this);
         }
 
         return new NColor(
