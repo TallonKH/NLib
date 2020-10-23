@@ -26,12 +26,13 @@ export default class NViewport {
     targetTickrate = 60,
     responsiveResize = true,
     pixelRatio = window.devicePixelRatio,
-    outOfBoundsStyle = "#111",
+    outOfBoundsStyle = "#211",
     minimizeThresholdX = 100,
     minimizeThresholdY = 100,
     updateMethod = "animframe", //animframe, timeout, idle
     contextArgs = {}, // ie: {alpha: false}
-    needsClearing = false,
+    needsClearing = true,
+    lazyPanDelay = 200, // ms delay between panning and redraw; 0 for instant panning
   } = {}) {
     this._container;
     this._canvas;
@@ -85,7 +86,11 @@ export default class NViewport {
 
     this._navigable = navigable;
     this.inversePanning = true;
+    this._lazyPanDelay = lazyPanDelay;
+    this._pendingPanUpdate = false;
     // the offset of the origin to the viewport center. In screen space.
+    this._physicalPanCenter = NPoint.ZERO; // displacement of the canvas div
+    this._lastContextPanCenter = NPoint.ZERO;
     this._panCenter = NPoint.ZERO;
     this.panSensitivity = panSensitivity;
 
@@ -619,6 +624,10 @@ export default class NViewport {
   }
 
   _redraw() {
+    console.log(this.constructor.name);
+    if(this._lazyPanDelay > 0){
+      this.resetPhysicalPan();
+    }
     if (this._isActive) {
       this._ctx.resetTransform();
       if (this._needsClearing) {
@@ -630,6 +639,8 @@ export default class NViewport {
       const scale = this._zoomFactorFitted * this._pixelRatio;
       const xOffset = this._canvasCenter.x + this._panCenter.x * this._pixelRatio;
       const yOffset = this._canvasCenter.y + this._panCenter.y * this._pixelRatio;
+      // const xOffset = this._canvasCenter.x;
+      // const yOffset = this._canvasCenter.y;
       this._ctx.setTransform(scale, 0, 0, scale, xOffset, yOffset);
 
       // erase things outside of bounds
@@ -664,14 +675,17 @@ export default class NViewport {
     this._container.style.margin = 0;
     this._container.style.padding = 0;
     this._container.style.background = this._outOfBoundsStyle;
+    this._container.style.width = "100%";
+    this._container.style.height = "100%";
 
     this._canvas = document.createElement("canvas");
     this._canvas.style.background = this._outOfBoundsStyle;
     this._canvas.style.width = "100%";
     this._canvas.style.height = "100%";
     this._canvas.style.lineHeight = 0;
-    this._container.style.margin = 0;
-    this._container.style.padding = 0;
+    this._canvas.style.margin = 0;
+    this._canvas.style.padding = 0;
+    this._canvas.style.position = "relative";
     this._container.appendChild(this._canvas);
     this._ctx = this._canvas.getContext("2d", this._contextArgs);
     delete this._contextArgs; // not needed anymore
@@ -956,6 +970,7 @@ export default class NViewport {
           throw `"${this._zoomCenterMode}" is not a valid zoom center mode!`;
       }
     }
+    this.queueRedraw();
     this.setPanCenter(this._panCenter.subtractp(
       zoomCenter.subtractp(this._panCenter.addp(this._divCenter))
       .divide1(prevZoomFactor).multiply1(this._zoomFactor - prevZoomFactor)
@@ -1011,12 +1026,34 @@ export default class NViewport {
 
     if (this._isActive) {
       this._panCenter = newPanCenter;
+      if(this._lazyPanDelay > 0){
+        this._physicalPanCenter = this._panCenter.subtractp(this._lastContextPanCenter);
+        this.physicalPanUpdate();
+        if(!this._pendingPanUpdate){
+          this._pendingPanUpdate = true;
+          window.setTimeout(this.queueRedraw.bind(this), this._lazyPanDelay);
+        }
+      }else{
+        this.queueRedraw();
+      }
       if (!quiet) {
         this._pointerUpdated();
       }
-      this.queueRedraw(0);
+      
     }
     this._viewSpaceUpdated();
+  }
+
+  physicalPanUpdate() {
+    this._canvas.style.left = this._physicalPanCenter.x + "px";
+    this._canvas.style.top = this._physicalPanCenter.y + "px";
+  }
+
+  resetPhysicalPan(){
+    this._lastContextPanCenter = this._panCenter;
+    this._physicalPanCenter = NPoint.ZERO;
+    this._pendingPanUpdate = false;
+    this.physicalPanUpdate();
   }
 
   scrollPanCenter(deltaX, deltaY, quiet = false) {
