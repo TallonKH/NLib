@@ -26,7 +26,7 @@ function setupElements() {
         activeAreaPadding: new NPoint(0),
     });
     viewport.setup(rootDiv);
-    viewport._activeBackground.setColor(NColor.fromHex("#1a1a1a"));
+    // viewport._activeBackground.setColor(NColor.fromHex("#1a1a1a"));
     rootDiv.style.backgroundColor = "#101010";
 }
 

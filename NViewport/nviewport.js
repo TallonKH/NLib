@@ -15,6 +15,7 @@ class NLayer {
     needsClearing = true,
     fixed = false, // does not update on pan/zoom
     contextArgs = {}, // ie: {alpha: false}
+    logRedraws = false,
   } = {}) {
     this._vp = vp;
     this._name = name;
@@ -30,6 +31,8 @@ class NLayer {
     this._ctx;
 
     this._pendingRedraw = false;
+    this._pendingRedrawCauses = [];
+    this._logRedraws = logRedraws;
   }
 
   setupElement() {
@@ -40,7 +43,7 @@ class NLayer {
     this._canvas.style.lineHeight = 0;
     this._canvas.style.margin = 0;
     this._canvas.style.padding = 0;
-    this._canvas.style.position = "relative";
+    this._canvas.style.position = "absolute";
     this._ctx = this._canvas.getContext("2d", this._contextArgs);
     delete this._contextArgs; // not needed anymore
   }
@@ -66,26 +69,26 @@ class NLayer {
     removeSorted(this._drawablesSorted, obj._uuid, this._vp.reveseDepthSorter);
   }
 
-  queueRedraw() {
-    this._pendingRedraw = true;
-    this._vp._layersPendingRedraw.add(this._id);
-    this._vp.queueUpdate();
+  queueRedraw(cause) {
+    this._vp.queueLayerRedraw(this, cause);
   }
 
   _redraw() {
+    if (this._logRedraws) {
+      console.log(this._name + " redraw [" + this._pendingRedrawCauses + "]");
+    }
+
+    this._pendingRedrawCauses = [];
     this._pendingRedraw = false;
     this._ctx.resetTransform();
     if (this._needsClearing) {
       this._ctx.clearRect(0, 0, this._vp._canvasDims.x, this._vp._canvasDims.y);
     }
 
-    // matrix version of viewportToDivSpace
-    // canvas transform is in canvas space, so pixelRatio must be applied to both scale and offset
-    const scale = this._vp._computedScale; // this._zoomFactorFitted * this._pixelRatio;
-    const xOffset = this._vp._computedOffset.x; //this._canvasCenter.x + this._panCenter.x * this._pixelRatio;
-    const yOffset = this._vp._computedOffset.y; //_canvasCenter.y + this._panCenter.y * this._pixelRatio;
-    // const xOffset = this._canvasCenter.x;
-    // const yOffset = this._canvasCenter.y;
+    const scale = this._vp._computedScale;
+    const xOffset = this._vp._computedOffset.x;
+    const yOffset = this._vp._computedOffset.y;
+
     this._ctx.setTransform(scale, 0, 0, scale, xOffset, yOffset);
 
     // erase things outside of bounds
@@ -110,7 +113,7 @@ class NLayer {
   }
 
   onRedraw() {
-    this._vp._onLayerRedraw(this);
+    this._vp.onLayerRedraw(this);
   }
 }
 
@@ -135,7 +138,7 @@ export default class NViewport {
     minimizeThresholdX = 100,
     minimizeThresholdY = 100,
     updateMethod = "animframe", //animframe, timeout, idle
-    lazyTransformDelay = 200, // ms delay between panning and redraw; 0 for instant panning
+    lazyTransformDelay = 100, // ms delay between panning and redraw; 0 for instant panning
   } = {}) {
     this._container;
     this._outOfBoundsStyle = outOfBoundsStyle;
@@ -153,6 +156,7 @@ export default class NViewport {
     this._visible = false;
     this.forceVisible = false;
     this._isMinimized = false;
+    this._resizeHandled = false;
     this._minimizeThresholdX = minimizeThresholdX;
     this._minimizeThresholdY = minimizeThresholdY;
     this._responsiveResize = responsiveResize;
@@ -269,7 +273,7 @@ export default class NViewport {
       return this.depthSorter(bid, aid);
     }.bind(this);
 
-    this.layerSorter = function(a,b){
+    this.layerSorter = function (a, b) {
       return this._layers.get(a)._height - this._layers.get(b).height;
     }.bind(this);
 
@@ -281,7 +285,7 @@ export default class NViewport {
   }
 
   newLayer(name, args) {
-    if(this._layers.has(name)){
+    if (this._layers.has(name)) {
       throw `Layer "${name}" already exists!`;
     }
     const layer = new NLayer(this, name, args);
@@ -292,15 +296,14 @@ export default class NViewport {
   addLayer(layer) {
     this._layers.set(layer._name, layer);
     const i = insertSorted(this._layersSorted, layer._name, this.layerSorted);
-    if(i < this._layersSorted.length - 1){
-      console.log(this._layers.get(this._layersSorted[i]));
+    if (i < this._layersSorted.length - 1) {
       this._container.insertBefore(layer._canvas, this._layers.get(this._layersSorted[i])._canvas);
-    }else{
+    } else {
       this._container.appendChild(layer._canvas);
     }
     return layer;
   }
-  
+
   removeLayer(layer) {
     this._layers.delete(layer._name);
     insertSorted(this._layersSorted, layer._name, this.layerSorter);
@@ -316,7 +319,12 @@ export default class NViewport {
       if (parentDiv !== null) {
         parentDiv.appendChild(this._container);
       }
-      this._setupScrollLogic();
+
+      this._resizeObserver = new ResizeObserver(function (e) {
+        this.queueResizeUpdate(e);
+      }.bind(this));
+      this._resizeObserver.observe(this._container);
+
       this._setupMouseListeners();
       this._setupKeyListeners();
       this._setupLayers();
@@ -324,11 +332,10 @@ export default class NViewport {
         const pc = this._panCenter;
         this._setupDone = true;
         this._setupVisibilityListener();
-        this.updateActiveState();
         this.onSetup();
-        //TODO reimplement
+        this.updateActiveState();
         // window.setTimeout(function () {
-        //   this.queueRedraw(0);
+        //   this.queueTotalRedraw("post-setup");
         // }.bind(this), 0);
       }.bind(this), 0);
     }
@@ -414,12 +421,11 @@ export default class NViewport {
   }
 
   updateActiveState() {
-    const newState = this._setupDone && this._enabled && (this._visible || this.forceVisible) && (!this._isMinimized);
+    const newState = this._setupDone && this._enabled && (this._visible || this.forceVisible) && (!this._isMinimized) && this._resizeHandled;
     if (newState ^ this._isActive) {
       this._isActive = newState;
       if (newState) {
-        //TODO reimplement
-        // this.queueRedraw(0);
+        this.queueTotalRedraw(`activeState: ${newState}`);
         this.onActivated();
       } else {
         this.onDeactivated();
@@ -450,7 +456,7 @@ export default class NViewport {
     this._pixelRatio = pixelRatio;
   }
 
-  getLayer(name){
+  getLayer(name) {
     return this._layers.get(name);
   }
 
@@ -593,7 +599,7 @@ export default class NViewport {
     delete this._allObjs[obj._uuid];
 
     if (wasDrawable === true) {
-      this.queueRedraw();
+      this.queueRedraw(`${obj} forgotten`);
     }
     // update mouse logic in case an object is removed that was preventing a lower object from being touched
     if (this._isActive) {
@@ -710,10 +716,26 @@ export default class NViewport {
     }
   }
 
-  queueNavigationalRedraw() {
+  queueLayerRedraw(layer, cause) {
+    layer._pendingRedrawCauses.push(cause);
+    if (!layer._pendingRedraw) {
+      layer._pendingRedraw = true;
+      this._layersPendingRedraw.add(layer._name);
+      this.queueUpdate();
+    }
+  }
+
+  queueTotalRedraw(cause) {
+    for (const [_, layer] of this._layers) {
+      layer.queueRedraw(`total (${cause})`);
+    }
+  }
+
+  queueNavigationalRedraw(cause) {
+    this._pendingTransformUpdate = true;
     for (const [_, layer] of this._layers) {
       if (!layer._fixed) {
-        layer.queueRedraw();
+        layer.queueRedraw(`nav (${cause})`);
       }
     }
   }
@@ -723,8 +745,8 @@ export default class NViewport {
       const evnt = this._pendingResizeUpdate;
       this._handleResize(evnt);
       this._pendingResizeUpdate = null;
-
-      this.queueNavigationalRedraw();
+      
+      this.queueNavigationalRedraw("resize");
     }
     this._redrawLayers();
     this._pendingUpdate = false;
@@ -774,6 +796,8 @@ export default class NViewport {
     this.callGlobalEvent("resize", {
       resizeEvent: e
     });
+    this._resizeHandled = true;
+    this.updateActiveState();
   }
 
   _viewSpaceUpdated() {
@@ -782,19 +806,17 @@ export default class NViewport {
   }
 
   _redrawLayers() {
-    if (this._isActive) {
-      if (this._lazyTransformDelay > 0) {
-        this.resetPhysicalTransform();
-      }
+    if (this._pendingTransformUpdate && this._lazyTransformDelay > 0) {
+      this.resetPhysicalTransform();
+    }
 
-      this._computedScale = this._zoomFactorFitted * this._pixelRatio;
-      this._computedOffset = this._canvasCenter.addp(this._panCenter.multiply1(this._pixelRatio));
-      if (this._layersPendingRedraw.size > 0) {
-        const pending = Array.from(this._layersPendingRedraw);
-        this._layersPendingRedraw.clear();
-        for (const layerName of pending) {
-          this._layers.get(layerName)._redraw();
-        }
+    this._computedScale = this._zoomFactorFitted * this._pixelRatio;
+    this._computedOffset = this._canvasCenter.addp(this._panCenter.multiply1(this._pixelRatio));
+    if (this._layersPendingRedraw.size > 0) {
+      const pending = Array.from(this._layersPendingRedraw);
+      this._layersPendingRedraw.clear();
+      for (const layerName of pending) {
+        this._layers.get(layerName)._redraw();
       }
     }
     this.onRedraw();
@@ -824,14 +846,10 @@ export default class NViewport {
     return npoint.multiply1(this._zoomFactorFitted).addp(this._divCenter.addp(this._panCenter));
   }
 
-  _setupScrollLogic() {
-    this._resizeObserver = new ResizeObserver(function (e) {
-      this.queueResizeUpdate(e);
-    }.bind(this));
-    this._resizeObserver.observe(this._container);
-  }
-
   _pointerUpdated(e) {
+    if (!this._isActive) {
+      return false;
+    }
     let newPointerElemPos = this._pointerElemPos;
     if (e) {
       newPointerElemPos = new NPoint(
@@ -1099,7 +1117,7 @@ export default class NViewport {
     if (zoomCenter === null) {
       zoomCenter = zoomCenterMode || this.getActiveZoomCenter();
     }
-    this.queueRedraw();
+    this.queueNavigationalRedraw("zoom");
     this.setPanCenter(this._panCenter.subtractp(
       zoomCenter.subtractp(this._panCenter.addp(this._divCenter))
       .divide1(prevZoomFactor).multiply1(this._zoomFactor - prevZoomFactor)
@@ -1115,16 +1133,26 @@ export default class NViewport {
   }
 
   setZoomFactor(newZoomFactor, zoomCenter = null, quiet = false) {
+    newZoomFactor = clamp(newZoomFactor, this._minZoomFactor, this._maxZoomFactor);
+    if (this._zoomFactor === newZoomFactor) {
+      return false;
+    }
+
     const prevZoomFactor = this._zoomFactor;
-    this._zoomFactor = clamp(newZoomFactor, this._minZoomFactor, this._maxZoomFactor);
-    this.updateFittedZoomFactor();
+    this._zoomFactor = newZoomFactor;
     this._zoomCounter = this.zoomFactorToCounter(this._zoomFactor);
+    this.updateFittedZoomFactor();
     this._zoomUpdatePanCenter(prevZoomFactor, zoomCenter, null, quiet);
   }
 
   setZoomCounter(newZoomCounter, zoomCenter = null, quiet = false) {
+    newZoomCounter = clamp(newZoomCounter, this._minZoomCounter, this._maxZoomCounter);
+    if (this._zoomCounter === newZoomCounter) {
+      return false;
+    }
+
+    this._zoomCounter = newZoomCounter;
     const prevZoomFactor = this._zoomFactor;
-    this._zoomCounter = clamp(newZoomCounter, this._minZoomCounter, this._maxZoomCounter);
     this._zoomFactor = this.zoomCounterToFactor(this._zoomCounter);
     this.updateFittedZoomFactor();
     this._zoomUpdatePanCenter(prevZoomFactor, zoomCenter, null, quiet);
@@ -1156,6 +1184,9 @@ export default class NViewport {
       const clamping = corner.subtractp(this._divCenter).addp(this._activeAreaPadding).max1(0);
       newPanCenter = newPanCenter.clamp1p(clamping);
     }
+    if (newPanCenter.equals(this._panCenter)) {
+      return false;
+    }
 
     if (this._isActive) {
       this._panCenter = newPanCenter;
@@ -1165,10 +1196,10 @@ export default class NViewport {
         this.physicalTransformUpdate();
         if (!this._pendingTransformUpdate) {
           this._pendingTransformUpdate = true;
-          window.setTimeout(this.queueRedraw.bind(this), this._lazyTransformDelay);
+          window.setTimeout(this.queueNavigationalRedraw.bind(this, "panCenter (lazy)"), this._lazyTransformDelay);
         }
       } else {
-        this.queueRedraw();
+        this.queueNavigationalRedraw("panCenter (instant)");
       }
       if (!quiet) {
         this._pointerUpdated();
@@ -1179,7 +1210,7 @@ export default class NViewport {
   }
 
   physicalTransformUpdate() {
-    for(const [_, layer] of this._layers){
+    for (const [_, layer] of this._layers) {
       layer._canvas.style.left = this._physicalPanCenter.x + "px";
       layer._canvas.style.top = this._physicalPanCenter.y + "px";
     }

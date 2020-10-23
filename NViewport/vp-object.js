@@ -48,12 +48,12 @@ export default class VPObject {
   // overflow = accidental ms delay since last tick
   onTick(deltaT, tickMultiplier, overflow) {}
 
-  requestRedraw() {
+  requestRedraw(cause) {
     // if(this._registeredStates.get("drawable") === true){
     //     this._vp.queueRedraw(this._vp.findRegisteredObjSorted("drawable", this));
     // }
     if(this._layer){
-      this._layer.queueRedraw();
+      this._layer.queueRedraw(`obj:${this.constructor.name} (${cause})`);
     }
   }
 
@@ -69,7 +69,7 @@ export default class VPObject {
 
   setSize(size) {
     this._size = size;
-    this.requestRedraw();
+    this.requestRedraw(`size (${size})`);
   }
 
   suggestCursor(type) {
