@@ -32,7 +32,7 @@ export default class NViewport {
     updateMethod = "animframe", //animframe, timeout, idle
     contextArgs = {}, // ie: {alpha: false}
     needsClearing = true,
-    lazyPanDelay = 200, // ms delay between panning and redraw; 0 for instant panning
+    lazyTransformDelay = 200, // ms delay between panning and redraw; 0 for instant panning
   } = {}) {
     this._container;
     this._canvas;
@@ -86,12 +86,13 @@ export default class NViewport {
 
     this._navigable = navigable;
     this.inversePanning = true;
-    this._lazyPanDelay = lazyPanDelay;
-    this._pendingPanUpdate = false;
+    this._lazyTransformDelay = lazyTransformDelay;
+    this._pendingTransformUpdate = false;
     // the offset of the origin to the viewport center. In screen space.
     this._physicalPanCenter = NPoint.ZERO; // displacement of the canvas div
     this._lastContextPanCenter = NPoint.ZERO;
     this._panCenter = NPoint.ZERO;
+    // this._lastContextZoom = 1;
     this.panSensitivity = panSensitivity;
 
     this._mouseDownConsumed = false;
@@ -611,7 +612,7 @@ export default class NViewport {
       default:
         this._fittingScaleFactor = 1;
     }
-    this._zoomFactorFitted = this._fittingScaleFactor * this._zoomFactor;
+    this.updateFittedZoomFactor();
     this._viewSpaceUpdated();
     this.callGlobalEvent("resize", {
       resizeEvent: e
@@ -624,9 +625,8 @@ export default class NViewport {
   }
 
   _redraw() {
-    console.log(this.constructor.name);
-    if(this._lazyPanDelay > 0){
-      this.resetPhysicalPan();
+    if (this._lazyTransformDelay > 0) {
+      this.resetPhysicalTransform();
     }
     if (this._isActive) {
       this._ctx.resetTransform();
@@ -946,6 +946,22 @@ export default class NViewport {
     }.bind(this));
   }
 
+  getActiveZoomCenter(){
+    switch (this._zoomCenterMode) {
+      case "origin":
+        return this.viewportToDivSpace(NPoint.ZERO);
+        break;
+      case "pointer":
+        return this._pointerElemPos;
+        break;
+      case "view":
+        return this._divCenter;
+        break;
+      default:
+        throw `"${this._zoomCenterMode}" is not a valid zoom center mode!`;
+    }
+  }
+
   _zoomUpdatePanCenter(prevZoomFactor, zoomCenter = null, zoomCenterMode = null, quiet = false) {
     if (this._minZoomFactor > this._maxZoomFactor) {
       throw `Invalid zoom minimum and maximum! [${this._minZoomFactor}, ${this._maxZoomFactor}]`;
@@ -956,19 +972,7 @@ export default class NViewport {
     }
 
     if (zoomCenter === null) {
-      switch (zoomCenterMode || this._zoomCenterMode) {
-        case "origin":
-          zoomCenter = this.viewportToDivSpace(NPoint.ZERO);
-          break;
-        case "pointer":
-          zoomCenter = this._pointerElemPos;
-          break;
-        case "view":
-          zoomCenter = this._divCenter;
-          break;
-        default:
-          throw `"${this._zoomCenterMode}" is not a valid zoom center mode!`;
-      }
+      zoomCenter = zoomCenterMode || this.getActiveZoomCenter();
     }
     this.queueRedraw();
     this.setPanCenter(this._panCenter.subtractp(
@@ -988,7 +992,7 @@ export default class NViewport {
   setZoomFactor(newZoomFactor, zoomCenter = null, quiet = false) {
     const prevZoomFactor = this._zoomFactor;
     this._zoomFactor = clamp(newZoomFactor, this._minZoomFactor, this._maxZoomFactor);
-    this._zoomFactorFitted = this._fittingScaleFactor * this._zoomFactor;
+    this.updateFittedZoomFactor();
     this._zoomCounter = this.zoomFactorToCounter(this._zoomFactor);
     this._zoomUpdatePanCenter(prevZoomFactor, zoomCenter, null, quiet);
   }
@@ -997,8 +1001,12 @@ export default class NViewport {
     const prevZoomFactor = this._zoomFactor;
     this._zoomCounter = clamp(newZoomCounter, this._minZoomCounter, this._maxZoomCounter);
     this._zoomFactor = this.zoomCounterToFactor(this._zoomCounter);
-    this._zoomFactorFitted = this._fittingScaleFactor * this._zoomFactor;
+    this.updateFittedZoomFactor();
     this._zoomUpdatePanCenter(prevZoomFactor, zoomCenter, null, quiet);
+  }
+
+  updateFittedZoomFactor() {
+    this._zoomFactorFitted = this._fittingScaleFactor * this._zoomFactor;
   }
 
   isInBounds(point, padding = NPoint.ZERO) {
@@ -1026,34 +1034,41 @@ export default class NViewport {
 
     if (this._isActive) {
       this._panCenter = newPanCenter;
-      if(this._lazyPanDelay > 0){
+      if (this._lazyTransformDelay > 0) {
         this._physicalPanCenter = this._panCenter.subtractp(this._lastContextPanCenter);
-        this.physicalPanUpdate();
-        if(!this._pendingPanUpdate){
-          this._pendingPanUpdate = true;
-          window.setTimeout(this.queueRedraw.bind(this), this._lazyPanDelay);
+        // this._physicalZoom = this._zoomFactorFitted / this._lastContextZoom;
+        this.physicalTransformUpdate();
+        if (!this._pendingTransformUpdate) {
+          this._pendingTransformUpdate = true;
+          window.setTimeout(this.queueRedraw.bind(this), this._lazyTransformDelay);
         }
-      }else{
+      } else {
         this.queueRedraw();
       }
       if (!quiet) {
         this._pointerUpdated();
       }
-      
+
     }
     this._viewSpaceUpdated();
   }
 
-  physicalPanUpdate() {
+  physicalTransformUpdate() {
     this._canvas.style.left = this._physicalPanCenter.x + "px";
     this._canvas.style.top = this._physicalPanCenter.y + "px";
+    // const origin = this.getActiveZoomCenter().dividep(this._divDims).multiply1(100);
+    // this._canvas.style.transform = `scale(${this._physicalZoom})`;
+    // this._canvas.style.transform = `matrix(${this._physicalZoom}, 0, 0, ${this._physicalZoom}, ${-this._physicalPanCenter.x}, ${-this._physicalPanCenter.y})`;
+    // this._canvas.style.transformOrigin = `${origin.x}% ${origin.x}% 0px`;
   }
 
-  resetPhysicalPan(){
+  resetPhysicalTransform() {
     this._lastContextPanCenter = this._panCenter;
+    // this._lastContextZoom = this._zoomFactorFitted;
     this._physicalPanCenter = NPoint.ZERO;
-    this._pendingPanUpdate = false;
-    this.physicalPanUpdate();
+    // this._physicalZoom = 1;
+    this._pendingTransformUpdate = false;
+    this.physicalTransformUpdate();
   }
 
   scrollPanCenter(deltaX, deltaY, quiet = false) {
