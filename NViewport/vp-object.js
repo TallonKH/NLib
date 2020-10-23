@@ -15,6 +15,7 @@ export default class VPObject {
     tickable = false,
     skipToGlobal = false,
   } = {}) {
+    this._layer = null;
     this._vp = vp;
     this._uuid = idCounter++;
 
@@ -51,16 +52,20 @@ export default class VPObject {
     // if(this._registeredStates.get("drawable") === true){
     //     this._vp.queueRedraw(this._vp.findRegisteredObjSorted("drawable", this));
     // }
-    this._vp.queueRedraw();
+    if(this._layer){
+      this._layer.queueRedraw();
+    }
   }
 
-  setZOrder(newOrder) {
-    changeObjOrdering("drawable", this, vobj => vobj._zOrder = newOrder);
-  }
 
-  setZSubOrder(newSubOrder) {
-    changeObjOrdering("drawable", this, vobj => vobj._zSubOrder = newSubOrder);
-  }
+  // TODO make these work for all registers, including layer's
+  // setZOrder(newOrder) {
+  //   this._vp.changeObjOrdering("drawable", this, vobj => vobj._zOrder = newOrder);
+  // }
+
+  // setZSubOrder(newSubOrder) {
+  //   this._vp.changeObjOrdering("drawable", this, vobj => vobj._zSubOrder = newSubOrder);
+  // }
 
   setSize(size) {
     this._size = size;

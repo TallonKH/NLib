@@ -34,6 +34,7 @@ function main() {
     const grabbables = [];
     let height = -100;
     const count = 100;
+    const mainLayer = viewport.getLayer("main");
     for(const space of ["RGB", "HSL", "Lab"]){
         const color1 = NColor.fromHex("#ff4747").convertTo(space);
         const color2 = NColor.fromHex("#4769ff").convertTo(space);
@@ -41,7 +42,7 @@ function main() {
             const grabbable = new GrabObj(viewport, new NPoint(i*25*Math.cos(Math.abs(i) / 15), height + 400 * Math.sin(i/5)));
             grabbable.setColor(NColor.lerp(color1, color2, (i+count)/(count*2)));
             grabbable.setSize(lerp(25,10,Math.abs(i)/count));
-            viewport.registerObj(grabbable);
+            mainLayer.registerObj(grabbable);
         }
         height += 100;
     }
@@ -53,8 +54,8 @@ function main() {
         const grabbable = new GrabObj(viewport, corner);
         grabbable.setColor(NColor.fromHex("#20B2AA"));
         grabbable.setSize(100);
-        viewport.registerObj(grabbable);
+        mainLayer.registerObj(grabbable);
     }
 
-    viewport.registerObj(new VisibleAreaMarker(viewport));
+    mainLayer.registerObj(new VisibleAreaMarker(viewport));
 }

@@ -9,6 +9,111 @@ import {
   findSorted,
 } from "../nmisc.js";
 
+class NLayer {
+  constructor(vp, name, {
+    height = 0,
+    needsClearing = true,
+    fixed = false, // does not update on pan/zoom
+    contextArgs = {}, // ie: {alpha: false}
+  } = {}) {
+    this._vp = vp;
+    this._name = name;
+
+    this._height = height;
+    this._fixed = fixed;
+    this._contextArgs = contextArgs;
+    this._needsClearing = needsClearing;
+
+    this._drawables = new Set();
+    this._drawablesSorted = [];
+    this._canvas;
+    this._ctx;
+
+    this._pendingRedraw = false;
+  }
+
+  setupElement() {
+    this._canvas = document.createElement("canvas");
+    this._canvas.style.background = "transparent";
+    this._canvas.style.width = "100%";
+    this._canvas.style.height = "100%";
+    this._canvas.style.lineHeight = 0;
+    this._canvas.style.margin = 0;
+    this._canvas.style.padding = 0;
+    this._canvas.style.position = "relative";
+    this._ctx = this._canvas.getContext("2d", this._contextArgs);
+    delete this._contextArgs; // not needed anymore
+  }
+
+  registerObj(obj) {
+    if (obj._layer !== null) {
+      throw `Object ${obj} already has a layer!`;
+    }
+    obj._layer = this;
+    this._drawables.add(obj._uuid);
+    insertSorted(this._drawablesSorted, obj._uuid, this._vp.reveseDepthSorter);
+
+    this._vp._registerObj(obj);
+  }
+
+  unregisterObj(obj) {
+    this._vp.forget(obj);
+  }
+
+  _unregisterObjLogic() {
+    obj._layer = null;
+    this._drawables.delete(obj._uuid);
+    removeSorted(this._drawablesSorted, obj._uuid, this._vp.reveseDepthSorter);
+  }
+
+  queueRedraw() {
+    this._pendingRedraw = true;
+    this._vp._layersPendingRedraw.add(this._id);
+    this._vp.queueUpdate();
+  }
+
+  _redraw() {
+    this._pendingRedraw = false;
+    this._ctx.resetTransform();
+    if (this._needsClearing) {
+      this._ctx.clearRect(0, 0, this._vp._canvasDims.x, this._vp._canvasDims.y);
+    }
+
+    // matrix version of viewportToDivSpace
+    // canvas transform is in canvas space, so pixelRatio must be applied to both scale and offset
+    const scale = this._vp._computedScale; // this._zoomFactorFitted * this._pixelRatio;
+    const xOffset = this._vp._computedOffset.x; //this._canvasCenter.x + this._panCenter.x * this._pixelRatio;
+    const yOffset = this._vp._computedOffset.y; //_canvasCenter.y + this._panCenter.y * this._pixelRatio;
+    // const xOffset = this._canvasCenter.x;
+    // const yOffset = this._canvasCenter.y;
+    this._ctx.setTransform(scale, 0, 0, scale, xOffset, yOffset);
+
+    // erase things outside of bounds
+    if (this._activeAreaBounded) {
+      this._ctx.save();
+      this._ctx.beginPath();
+      const dims = this._baseActiveAreaDims;
+      this._ctx.rect(-(dims.x >> 1), -(dims.y >> 1), dims.x, dims.y);
+      this._ctx.closePath();
+      this._ctx.clip();
+    }
+
+    for (const uuid of this._drawablesSorted) {
+      this._vp._allObjs[uuid].draw(this._ctx);
+    }
+
+    if (this._vp._activeAreaBounded) {
+      this._ctx.restore();
+    }
+
+    this.onRedraw();
+  }
+
+  onRedraw() {
+    this._vp._onLayerRedraw(this);
+  }
+}
+
 export default class NViewport {
   constructor({
     minZoomFactor = 0.25,
@@ -30,17 +135,17 @@ export default class NViewport {
     minimizeThresholdX = 100,
     minimizeThresholdY = 100,
     updateMethod = "animframe", //animframe, timeout, idle
-    contextArgs = {}, // ie: {alpha: false}
-    needsClearing = true,
     lazyTransformDelay = 200, // ms delay between panning and redraw; 0 for instant panning
   } = {}) {
     this._container;
-    this._canvas;
     this._outOfBoundsStyle = outOfBoundsStyle;
     this._updateMethod = updateMethod;
     this._boundingRect;
 
-    this._contextArgs = contextArgs;
+    this._layers = new Map();
+    this._layersSorted = [];
+    this._layersPendingRedraw = new Set();
+
 
     this._isActive = false;
     this._enabled = true;
@@ -56,7 +161,6 @@ export default class NViewport {
 
     this.setPixelRatio(pixelRatio);
 
-    this._needsClearing = needsClearing;
     this._activeAreaBounded = activeAreaBounded; // if false, canvas is infinite in all directions
     this._baseActiveAreaDims; // assigned by setBaseActiveDims
     this._activeAreaCorners; // assigned by setBaseActiveDims
@@ -165,11 +269,42 @@ export default class NViewport {
       return this.depthSorter(bid, aid);
     }.bind(this);
 
+    this.layerSorter = function(a,b){
+      return this._layers.get(a)._height - this._layers.get(b).height;
+    }.bind(this);
+
     // this._redraw = this.__redrawUnbound.bind(this);
     this._update = this.__updateUnbound.bind(this);
     this._pendingUpdate = false;
     this._pendingRedraw = false;
     this._pendingResizeUpdate = null;
+  }
+
+  newLayer(name, args) {
+    if(this._layers.has(name)){
+      throw `Layer "${name}" already exists!`;
+    }
+    const layer = new NLayer(this, name, args);
+    layer.setupElement();
+    return layer;
+  }
+
+  addLayer(layer) {
+    this._layers.set(layer._name, layer);
+    const i = insertSorted(this._layersSorted, layer._name, this.layerSorted);
+    if(i < this._layersSorted.length - 1){
+      console.log(this._layers.get(this._layersSorted[i]));
+      this._container.insertBefore(layer._canvas, this._layers.get(this._layersSorted[i])._canvas);
+    }else{
+      this._container.appendChild(layer._canvas);
+    }
+    return layer;
+  }
+  
+  removeLayer(layer) {
+    this._layers.delete(layer._name);
+    insertSorted(this._layersSorted, layer._name, this.layerSorter);
+    layer._canvas.remove();
   }
 
   /** for most cases, no not override. Override onSetup instead. */
@@ -184,20 +319,32 @@ export default class NViewport {
       this._setupScrollLogic();
       this._setupMouseListeners();
       this._setupKeyListeners();
-      this._activeBackground = new this._activeBackgroundClass(this);
-      this.registerObj(this._activeBackground);
+      this._setupLayers();
       window.setTimeout(function () {
         const pc = this._panCenter;
         this._setupDone = true;
         this._setupVisibilityListener();
         this.updateActiveState();
         this.onSetup();
-        window.setTimeout(function () {
-          this.queueRedraw(0);
-        }.bind(this), 0);
+        //TODO reimplement
+        // window.setTimeout(function () {
+        //   this.queueRedraw(0);
+        // }.bind(this), 0);
       }.bind(this), 0);
     }
     return this;
+  }
+
+  _setupLayers() {
+    const bgLayer = this.addLayer(this.newLayer("background", {
+      height: -1,
+    }));
+    const mainLayer = this.addLayer(this.newLayer("main", {
+      height: 0,
+    }));
+
+    this._activeBackground = new this._activeBackgroundClass(this);
+    bgLayer.registerObj(this._activeBackground);
   }
 
   _setupObjRegistries() {
@@ -271,7 +418,8 @@ export default class NViewport {
     if (newState ^ this._isActive) {
       this._isActive = newState;
       if (newState) {
-        this.queueRedraw(0);
+        //TODO reimplement
+        // this.queueRedraw(0);
         this.onActivated();
       } else {
         this.onDeactivated();
@@ -302,6 +450,10 @@ export default class NViewport {
     this._pixelRatio = pixelRatio;
   }
 
+  getLayer(name){
+    return this._layers.get(name);
+  }
+
   _addGlobalEventChannel(eventName) {
     this._globalEventChannels.set(eventName, {
       _listeners: new Map(),
@@ -326,7 +478,7 @@ export default class NViewport {
     }
   }
 
-  registerObj(obj) {
+  _registerObj(obj) {
     this._allObjs[obj._uuid] = obj;
     if (obj._mouseListening) {
       this.registerObjFor("mouseListening", obj);
@@ -335,9 +487,13 @@ export default class NViewport {
       this.registerObjFor("tickable", obj);
     }
     if (obj._drawable) {
-      this.queueRedraw(this.registerObjFor("drawable", obj));
+      this.registerObjFor("drawable", obj);
     }
+
+    this.onRegisterObj(obj);
   }
+
+  onRegisterObj(obj) {}
 
   registryForHas(registryName, obj) {
     return this._objRegistries.get(registryName)._idSet.has(obj._uuid);
@@ -378,12 +534,12 @@ export default class NViewport {
     return findSorted(dat._sorted, obj._uuid, dat._sorter);
   }
 
-  changeObjOrdering(registryName, obj, func) {
-    const dat = this._objRegistries.get(registryName);
-    removeSorted(dat._sorted, obj._uuid, dat._sorter);
-    func(obj);
-    insertSorted(dat._sorted, obj._uuid, dat._sorter);
-  }
+  // changeObjOrdering(registryName, obj, func) {
+  //   const dat = this._objRegistries.get(registryName);
+  //   removeSorted(dat._sorted, obj._uuid, dat._sorter);
+  //   func(obj);
+  //   insertSorted(dat._sorted, obj._uuid, dat._sorter);
+  // }
 
   unregisterAllObjsFor(registryName) {
     const dat = this._objRegistries.get(registryName);
@@ -421,16 +577,12 @@ export default class NViewport {
   }
 
   forget(obj) {
-    if (obj === this._activeBackground) {
-      return false;
-    }
+    obj._layer._unregisterObjLogic(obj);
 
     obj.onForget();
 
     // deal with drawable separately
-    if (obj._registeredStates.get("drawable") === true) {
-      this.queueRedraw(this.unregisterObjFor("drawable", obj));
-    }
+    const wasDrawable = obj._registeredStates.get("drawable");
 
     // unregister from every registry
     for (const [registryName, state] of obj._registeredStates) {
@@ -440,6 +592,9 @@ export default class NViewport {
     }
     delete this._allObjs[obj._uuid];
 
+    if (wasDrawable === true) {
+      this.queueRedraw();
+    }
     // update mouse logic in case an object is removed that was preventing a lower object from being touched
     if (this._isActive) {
       this._pointerUpdated();
@@ -546,11 +701,6 @@ export default class NViewport {
     }
   }
 
-  queueRedraw() {
-    this._pendingRedraw = true;
-    this.queueUpdate();
-  }
-
   queueResizeUpdate(event) {
     this._pendingResizeUpdate = event;
     if (this._responsiveResize) {
@@ -560,18 +710,23 @@ export default class NViewport {
     }
   }
 
+  queueNavigationalRedraw() {
+    for (const [_, layer] of this._layers) {
+      if (!layer._fixed) {
+        layer.queueRedraw();
+      }
+    }
+  }
+
   __updateUnbound() {
     if (this._pendingResizeUpdate) {
       const evnt = this._pendingResizeUpdate;
       this._handleResize(evnt);
       this._pendingResizeUpdate = null;
 
-      this._pendingRedraw = true;
+      this.queueNavigationalRedraw();
     }
-    if (this._pendingRedraw) {
-      this._pendingRedraw = false;
-      this._redraw();
-    }
+    this._redrawLayers();
     this._pendingUpdate = false;
   }
 
@@ -589,8 +744,10 @@ export default class NViewport {
 
     this._canvasDims = this._divDims.multiply1(this._pixelRatio);
     this._canvasCenter = this._canvasDims.operate(c => c >> 1);
-    this._canvas.width = this._canvasDims.x;
-    this._canvas.height = this._canvasDims.y;
+    for (const [_, layer] of this._layers) {
+      layer._canvas.width = this._canvasDims.x;
+      layer._canvas.height = this._canvasDims.y;
+    }
 
     let scaleDims;
     switch (this._fittingBasis) {
@@ -624,46 +781,26 @@ export default class NViewport {
     this._visibleAreaMaxCorner = this.divToViewportSpace(this._divDims);
   }
 
-  _redraw() {
-    if (this._lazyTransformDelay > 0) {
-      this.resetPhysicalTransform();
-    }
+  _redrawLayers() {
     if (this._isActive) {
-      this._ctx.resetTransform();
-      if (this._needsClearing) {
-        this._ctx.clearRect(0, 0, this._canvasDims.x, this._canvasDims.y);
+      if (this._lazyTransformDelay > 0) {
+        this.resetPhysicalTransform();
       }
 
-      // matrix version of viewportToDivSpace
-      // canvas transform is in canvas space, so pixelRatio must be applied to both scale and offset
-      const scale = this._zoomFactorFitted * this._pixelRatio;
-      const xOffset = this._canvasCenter.x + this._panCenter.x * this._pixelRatio;
-      const yOffset = this._canvasCenter.y + this._panCenter.y * this._pixelRatio;
-      // const xOffset = this._canvasCenter.x;
-      // const yOffset = this._canvasCenter.y;
-      this._ctx.setTransform(scale, 0, 0, scale, xOffset, yOffset);
-
-      // erase things outside of bounds
-      if (this._activeAreaBounded) {
-        this._ctx.save();
-        this._ctx.beginPath();
-        const dims = this._baseActiveAreaDims;
-        this._ctx.rect(-(dims.x >> 1), -(dims.y >> 1), dims.x, dims.y);
-        this._ctx.closePath();
-        this._ctx.clip();
+      this._computedScale = this._zoomFactorFitted * this._pixelRatio;
+      this._computedOffset = this._canvasCenter.addp(this._panCenter.multiply1(this._pixelRatio));
+      if (this._layersPendingRedraw.size > 0) {
+        const pending = Array.from(this._layersPendingRedraw);
+        this._layersPendingRedraw.clear();
+        for (const layerName of pending) {
+          this._layers.get(layerName)._redraw();
+        }
       }
-
-      for (const uuid of this.getRegistryItemsSorted("drawable")) {
-        this._allObjs[uuid].draw(this._ctx);
-      }
-
-      if (this._activeAreaBounded) {
-        this._ctx.restore();
-      }
-
-      this.onRedraw();
     }
+    this.onRedraw();
   }
+
+  onLayerRedraw(layer) {}
 
   onRedraw() {}
 
@@ -677,18 +814,6 @@ export default class NViewport {
     this._container.style.background = this._outOfBoundsStyle;
     this._container.style.width = "100%";
     this._container.style.height = "100%";
-
-    this._canvas = document.createElement("canvas");
-    this._canvas.style.background = this._outOfBoundsStyle;
-    this._canvas.style.width = "100%";
-    this._canvas.style.height = "100%";
-    this._canvas.style.lineHeight = 0;
-    this._canvas.style.margin = 0;
-    this._canvas.style.padding = 0;
-    this._canvas.style.position = "relative";
-    this._container.appendChild(this._canvas);
-    this._ctx = this._canvas.getContext("2d", this._contextArgs);
-    delete this._contextArgs; // not needed anymore
   }
 
   divToViewportSpace(npoint) {
@@ -946,7 +1071,7 @@ export default class NViewport {
     }.bind(this));
   }
 
-  getActiveZoomCenter(){
+  getActiveZoomCenter() {
     switch (this._zoomCenterMode) {
       case "origin":
         return this.viewportToDivSpace(NPoint.ZERO);
@@ -1054,8 +1179,10 @@ export default class NViewport {
   }
 
   physicalTransformUpdate() {
-    this._canvas.style.left = this._physicalPanCenter.x + "px";
-    this._canvas.style.top = this._physicalPanCenter.y + "px";
+    for(const [_, layer] of this._layers){
+      layer._canvas.style.left = this._physicalPanCenter.x + "px";
+      layer._canvas.style.top = this._physicalPanCenter.y + "px";
+    }
     // const origin = this.getActiveZoomCenter().dividep(this._divDims).multiply1(100);
     // this._canvas.style.transform = `scale(${this._physicalZoom})`;
     // this._canvas.style.transform = `matrix(${this._physicalZoom}, 0, 0, ${this._physicalZoom}, ${-this._physicalPanCenter.x}, ${-this._physicalPanCenter.y})`;
@@ -1292,6 +1419,6 @@ export default class NViewport {
   }
 
   _cursorChange(type) {
-    this._canvas.style.cursor = type;
+    this._container.style.cursor = type;
   }
 }
