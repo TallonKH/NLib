@@ -38,6 +38,10 @@ class NLayer {
   setupElement() {
     this._canvas = document.createElement("canvas");
     this._canvas.style.background = "transparent";
+    // this._canvas.style.top = 0;
+    // this._canvas.style.bottom = 0;
+    // this._canvas.style.left = 0;
+    // this._canvas.style.right = 0;
     this._canvas.style.width = "100%";
     this._canvas.style.height = "100%";
     this._canvas.style.lineHeight = 0;
@@ -138,7 +142,7 @@ export default class NViewport {
     minimizeThresholdX = 100,
     minimizeThresholdY = 100,
     updateMethod = "animframe", //animframe, timeout, idle
-    lazyTransformDelay = 100, // ms delay between panning and redraw; 0 for instant panning
+    lazyTransformDelay = 0, // ms delay between panning and redraw; 0 for instant panning
   } = {}) {
     this._container;
     this._outOfBoundsStyle = outOfBoundsStyle;
@@ -320,9 +324,7 @@ export default class NViewport {
         parentDiv.appendChild(this._container);
       }
 
-      this._resizeObserver = new ResizeObserver(function (e) {
-        this.queueResizeUpdate(e);
-      }.bind(this));
+      this._resizeObserver = new ResizeObserver(this.queueResizeUpdate.bind(this));
       this._resizeObserver.observe(this._container);
 
       this._setupMouseListeners();
@@ -333,6 +335,7 @@ export default class NViewport {
         this._setupDone = true;
         this._setupVisibilityListener();
         this.onSetup();
+        this.updateSizeVars();
         this.updateActiveState();
         // window.setTimeout(function () {
         //   this.queueTotalRedraw("post-setup");
@@ -421,7 +424,7 @@ export default class NViewport {
   }
 
   updateActiveState() {
-    const newState = this._setupDone && this._enabled && (this._visible || this.forceVisible) && (!this._isMinimized) && this._resizeHandled;
+    const newState = this._setupDone && this._enabled && (this._visible || this.forceVisible) && (!this._isMinimized);
     if (newState ^ this._isActive) {
       this._isActive = newState;
       if (newState) {
@@ -691,6 +694,10 @@ export default class NViewport {
   }
 
   queueUpdate() {
+    if (!this._isActive) {
+      return;
+    }
+
     if (!this._pendingUpdate) {
       this._pendingUpdate = true;
       switch (this._updateMethod) {
@@ -709,7 +716,7 @@ export default class NViewport {
 
   queueResizeUpdate(event) {
     this._pendingResizeUpdate = event;
-    if (this._responsiveResize) {
+    if (this._responsiveResize && this._isActive) {
       this.__updateUnbound();
     } else {
       this.queueUpdate();
@@ -741,11 +748,15 @@ export default class NViewport {
   }
 
   __updateUnbound() {
+    if (!this._isActive) {
+      console.log("Tried to update, but not active yet!");
+    }
+
     if (this._pendingResizeUpdate) {
       const evnt = this._pendingResizeUpdate;
       this._handleResize(evnt);
       this._pendingResizeUpdate = null;
-      
+
       this.queueNavigationalRedraw("resize");
     }
     this._redrawLayers();
@@ -753,19 +764,24 @@ export default class NViewport {
   }
 
   _handleResize(e) {
+    this.updateSizeVars(e);
+  }
+  
+  updateSizeVars(e = null) {
     this._boundingRect = this._container.getBoundingClientRect();
-    const resizeRect = e[0].contentRect;
+    const resizeRect = this._boundingRect;
     this._isMinimized = (resizeRect.width <= this._minimizeThresholdX || resizeRect.height <= this._minimizeThresholdY);
     this.updateActiveState();
     if (this._isMinimized) {
       return;
     }
     this._divDims = new NPoint(resizeRect.width, resizeRect.height).clamp4(0, window.innerWidth, 0, window.innerHeight);
-    // this._divCenter = this._divDims.operate(c => c >> 1);
     this._divCenter = this._divDims.multiply1(0.5);
-
+    
     this._canvasDims = this._divDims.multiply1(this._pixelRatio);
     this._canvasCenter = this._canvasDims.operate(c => c >> 1);
+    
+    // update canvas internal sizes
     for (const [_, layer] of this._layers) {
       layer._canvas.width = this._canvasDims.x;
       layer._canvas.height = this._canvasDims.y;
@@ -796,8 +812,6 @@ export default class NViewport {
     this.callGlobalEvent("resize", {
       resizeEvent: e
     });
-    this._resizeHandled = true;
-    this.updateActiveState();
   }
 
   _viewSpaceUpdated() {
@@ -829,13 +843,14 @@ export default class NViewport {
   _setupElements() {
     this._container = document.createElement("div");
     this._container.classList.add("vpContainer");
-    this._container.style.height = "100%";
+    this._container.style.position = "relative";
     this._container.style.lineHeight = 0;
     this._container.style.margin = 0;
     this._container.style.padding = 0;
     this._container.style.background = this._outOfBoundsStyle;
     this._container.style.width = "100%";
     this._container.style.height = "100%";
+    this._container.style.overflow = "none";
   }
 
   divToViewportSpace(npoint) {
@@ -1210,9 +1225,11 @@ export default class NViewport {
   }
 
   physicalTransformUpdate() {
+    this._container.style.left = this._physicalPanCenter.x + "px";
+    this._container.style.top = this._physicalPanCenter.y + "px";
     for (const [_, layer] of this._layers) {
-      layer._canvas.style.left = this._physicalPanCenter.x + "px";
-      layer._canvas.style.top = this._physicalPanCenter.y + "px";
+      // layer._canvas.style.left = this._physicalPanCenter.x + "px";
+      // layer._canvas.style.top = this._physicalPanCenter.y + "px";
     }
     // const origin = this.getActiveZoomCenter().dividep(this._divDims).multiply1(100);
     // this._canvas.style.transform = `scale(${this._physicalZoom})`;
