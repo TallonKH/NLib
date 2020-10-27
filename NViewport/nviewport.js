@@ -67,9 +67,11 @@ class NLayer {
     this._vp.forget(obj);
   }
 
-  _unregisterObjLogic() {
+  _unregisterObjLogic(obj) {
     obj._layer = null;
-    this._drawables.delete(obj._uuid);
+    if (this._drawables.delete(obj._uuid)) {
+      this.queueRedraw(`${obj} forgotten`);
+    }
     removeSorted(this._drawablesSorted, obj._uuid, this._vp.reveseDepthSorter);
   }
 
@@ -601,9 +603,6 @@ export default class NViewport {
     }
     delete this._allObjs[obj._uuid];
 
-    if (wasDrawable === true) {
-      this.queueRedraw(`${obj} forgotten`);
-    }
     // update mouse logic in case an object is removed that was preventing a lower object from being touched
     if (this._isActive) {
       this._pointerUpdated();
