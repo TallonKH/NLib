@@ -16,7 +16,7 @@ export default class GrabObj extends VPObject {
     setColor(color) {
         this.color = color;
         this.colorHex = color.toHex();
-        this.requestRedraw();
+        this.requestRedraw(`color (${color.toString()})`);
     }
 
     draw(ctx) {
@@ -41,14 +41,14 @@ export default class GrabObj extends VPObject {
     onPointerOverlapStarted(pointerMoveEvent) {
         super.onPointerOverlapStarted(pointerMoveEvent);
         this.suggestCursor("pointer");
-        this.requestRedraw();
+        this.requestRedraw("overlap start");
         return true;
     }
 
     onPointerOverlapEnded(pointerMoveEvent) {
         super.onPointerOverlapEnded(pointerMoveEvent);
         this.unsuggestCursor("pointer");
-        this.requestRedraw();
+        this.requestRedraw("overlap end");
     }
 
     onDragStarted(pointerMoveEvent) {
@@ -64,7 +64,7 @@ export default class GrabObj extends VPObject {
             this.dragInitialPosition.addp(this._vp._pointerDragDelta),
             -this._size
         );
-        this.requestRedraw();
+        this.requestRedraw("drag");
     }
 
     onDragEnded(pointerUpEvent) {
