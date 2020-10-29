@@ -57,10 +57,14 @@ class NLayer {
       throw `Object ${obj} already has a layer!`;
     }
     obj._layer = this;
-    this._drawables.add(obj._uuid);
-    insertSorted(this._drawablesSorted, obj._uuid, this._vp.reveseDepthSorter);
-
+   
     this._vp._registerObj(obj);
+   
+    if(obj._drawable){
+      this._drawables.add(obj._uuid);
+      // must happen after object registration so that zOrder can be accessed from vp._allObjs
+      insertSorted(this._drawablesSorted, obj._uuid, this._vp.reverseDepthSorter);
+    }
   }
 
   unregisterObj(obj) {
@@ -72,7 +76,7 @@ class NLayer {
     if (this._drawables.delete(obj._uuid)) {
       this.queueRedraw(`${obj} forgotten`);
     }
-    removeSorted(this._drawablesSorted, obj._uuid, this._vp.reveseDepthSorter);
+    removeSorted(this._drawablesSorted, obj._uuid, this._vp.reverseDepthSorter);
   }
 
   queueRedraw(cause) {
@@ -135,7 +139,6 @@ export default class NViewport {
     activeAreaBounded = false,
     fittingBasis = "element",
     fittingMode = "shrink",
-    activeBackgroundClass = VPBackground,
     activeAreaPadding = new NPoint(100, 100),
     targetTickrate = 60,
     responsiveResize = true,
@@ -184,8 +187,6 @@ export default class NViewport {
      * Works in conjunction with minZoomFactor (if zoomFactor == 1, not all 4 borders can be visible at once)
      */
     this._activeAreaPadding = activeAreaPadding;
-    this._activeBackgroundClass = activeBackgroundClass;
-    this._activeBackground;
     this._fittingScaleFactor;
     this._zoomFactorFitted; // locked to fittingScaleFactor * zoomFactor
     this._zoomCenterMode = zoomCenterMode;
@@ -318,7 +319,8 @@ export default class NViewport {
 
   /** for most cases, no not override. Override onSetup instead. */
   setup(parentDiv = null) {
-    if (!this._setupDone) {
+    if ((!this._setupStarted) && (!this._setupDone)) {
+      this._setupStarted = true;
       this._setupObjRegistries();
       this._setupGlobalEventChannels();
       this._setupElements();
@@ -339,9 +341,6 @@ export default class NViewport {
         this.onSetup();
         this.updateSizeVars();
         this.updateActiveState();
-        // window.setTimeout(function () {
-        //   this.queueTotalRedraw("post-setup");
-        // }.bind(this), 0);
       }.bind(this), 0);
     }
     return this;
@@ -351,12 +350,17 @@ export default class NViewport {
     const bgLayer = this.addLayer(this.newLayer("background", {
       height: -1,
     }));
+    const background = new VPBackground(this);
+    bgLayer.registerObj(background);
+
     const mainLayer = this.addLayer(this.newLayer("main", {
       height: 0,
     }));
-
-    this._activeBackground = new this._activeBackgroundClass(this);
-    bgLayer.registerObj(this._activeBackground);
+    return {
+      "bgLayer": bgLayer,
+      "mainLayer": mainLayer,
+      "background": background,
+    }
   }
 
   _setupObjRegistries() {
